@@ -1,3 +1,4 @@
+import { routineAction } from './actions'
 import { expect, test, type Page, type BrowserContext } from '@playwright/test'
 
 test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Seoul' })
@@ -153,7 +154,7 @@ test('supports real touch drag, keyboard reorder/cancel and separate check/edit 
   await page.getByRole('button', { name: 'C 완료 취소', exact: true }).tap()
   await expect.poll(() => names(page)).toEqual(['C', 'A', 'B'])
   expect((await data(page)).routines).toEqual(manual)
-  await page.getByRole('button', { name: 'C 수정', exact: true }).tap()
+  await routineAction(page, 'C', 'edit', 'ko', true)
   await expect(page.getByRole('dialog', { name: '루틴 수정' })).toBeVisible()
   await page.getByRole('button', { name: '닫기', exact: true }).tap()
   await page.reload()

@@ -1,3 +1,4 @@
+import { routineAction } from './actions'
 import { expect, test, type Page } from '@playwright/test'
 import type { Routine, Completion } from '../src/domain/types'
 import { contrastRatio } from './contrast'
@@ -76,7 +77,7 @@ for (const theme of ['light', 'dark'] as const) test(`notes, six presets and cle
     expect(routine.color).toBe(palette[index][1].toLowerCase())
     expect(routine.category).toBe('other')
   })
-  await page.getByRole('button', { name: '메모 없음 수정', exact: true }).tap()
+  await routineAction(page, '메모 없음', 'edit', 'ko', true)
   await page.getByRole('button', { name: '요일 선택', exact: true }).click()
   for (const day of ['일요일', '화요일', '목요일', '토요일']) await page.getByRole('button', { name: day, exact: true }).click()
   await expect(page.locator('.weekday-picker button')).toHaveCount(7)
@@ -127,7 +128,7 @@ test('editing legacy colors and categories preserves records until a new preset 
   const before = await readData(page)
   await expect(cardFor(page, '기존 루틴').locator('.routine-meta')).toHaveText('매일')
   await expect(cardFor(page, '기존 루틴').locator('.routine-accent')).toHaveCSS('background-color', 'rgb(139, 99, 199)')
-  await page.getByRole('button', { name: '기존 루틴 수정', exact: true }).tap()
+  await routineAction(page, '기존 루틴', 'edit', 'ko', true)
   await expect(page.locator('.color-option[aria-pressed="true"]')).toHaveCount(0)
   await expect(page.getByLabel('카테고리')).toHaveCount(0)
   await page.getByLabel('습관 이름').fill('이름만 변경')
@@ -136,7 +137,7 @@ test('editing legacy colors and categories preserves records until a new preset 
   const renamed = await readData(page)
   expect(renamed.routines[0]).toMatchObject({ ...before.routines[0], name: '이름만 변경', updatedAt: renamed.routines[0].updatedAt })
   expect(renamed.completions).toEqual(before.completions)
-  await page.getByRole('button', { name: '이름만 변경 수정', exact: true }).tap()
+  await routineAction(page, '이름만 변경', 'edit', 'ko', true)
   await page.getByRole('button', { name: 'Clear Sky', exact: true }).click()
   await page.getByRole('button', { name: '변경 저장', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)

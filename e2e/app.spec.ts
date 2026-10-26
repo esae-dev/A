@@ -1,3 +1,4 @@
+import { routineAction } from './actions'
 import { expect, test, type Page } from '@playwright/test'
 
 test.use({ timezoneId: 'Asia/Seoul' })
@@ -36,7 +37,7 @@ test('create, check, undo, reload, edit and delete an actual local routine', asy
   await expect(page.locator('.streak-value.current')).toHaveText('1회')
   await expect(page.locator('.heatmap-grid .completed')).toHaveCount(1)
   await page.getByRole('button', { name: '홈', exact: true }).click()
-  await page.getByRole('button', { name: '책 10쪽 읽기 수정' }).click()
+  await routineAction(page, '책 10쪽 읽기', 'edit', 'ko', false)
   await page.getByLabel('습관 이름').fill('책 20쪽 읽기')
   await page.getByLabel('메모').fill('잠들기 전에')
   await expect(page.getByLabel('카테고리')).toHaveCount(0)
@@ -44,8 +45,7 @@ test('create, check, undo, reload, edit and delete an actual local routine', asy
   await page.getByRole('button', { name: '변경 저장', exact: true }).click()
   await expect(page.getByRole('heading', { name: '책 20쪽 읽기' })).toBeVisible()
   await expect(page.getByText('잠들기 전에')).toBeVisible()
-  await page.getByRole('button', { name: '책 20쪽 읽기 수정' }).click()
-  await page.getByRole('button', { name: '루틴 삭제', exact: true }).click()
+  await routineAction(page, '책 20쪽 읽기', 'delete')
   await page.getByRole('button', { name: '삭제', exact: true }).click()
   await expect(page.locator('.routine-card')).toHaveCount(0)
   await page.reload()
@@ -56,7 +56,7 @@ test('create, check, undo, reload, edit and delete an actual local routine', asy
 test('weekday changes preserve today, reject no days and disable non-target routines', async ({ page }) => {
   await addRoutine(page, '운동')
   await page.getByRole('button', { name: '운동 완료하기' }).click()
-  await page.getByRole('button', { name: '운동 수정' }).click()
+  await routineAction(page, '운동', 'edit', 'ko', false)
   await page.getByRole('button', { name: '요일 선택', exact: true }).click()
   await page.getByRole('button', { name: '월요일', exact: true }).click()
   await expect(page.getByText('요일 변경은 내일부터 적용됩니다.')).toBeVisible()
@@ -159,6 +159,9 @@ test('project subpath manifest, icons, service worker and offline read/write', a
   expect(manifestURL).toBe('/A/manifest.webmanifest')
   const response = await page.request.get(manifestURL!)
   const manifest = await response.json()
+  expect(manifest.id).toBe('/A/')
+  expect(manifest.background_color).toBe('#f6f5f3')
+  expect(manifest.theme_color).toBe('#f6f5f3')
   expect(manifest.start_url).toBe('/A/')
   expect(manifest.name).toBe('AEHA')
   expect(manifest.short_name).toBe('AEHA')

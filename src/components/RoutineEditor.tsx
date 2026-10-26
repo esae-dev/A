@@ -3,14 +3,15 @@ import type { Routine, RoutineInput, Weekday } from '../domain/types';
 import { Icon } from './Icon';
 import { routinePalette } from '../config';
 import { contrastInk } from './colorContrast';
+import { restoreRoutineFocus } from './DeleteRoutineDialog';
 
 const copy = {
   ko: {
-    create: '루틴 추가', edit: '루틴 수정', name: '습관 이름', namePlaceholder: '습관 이름', memo: '메모', optional: '선택', memoPlaceholder: '메모 (선택)', color: '색상', repeat: '반복 빈도', daily: '매일', selected: '요일 선택', submit: '만들기', save: '변경 저장', saving: '저장 중…', close: '닫기', remove: '루틴 삭제', confirm: '이 루틴을 삭제할까요?', confirmDetail: '루틴과 기록이 목록에서 사라집니다.', cancel: '취소', deleteConfirm: '삭제', nameError: '습관 이름을 입력해주세요.', daysError: '반복할 요일을 하나 이상 선택해주세요.', error: '저장하지 못했습니다. 다시 시도해주세요.', required: '필수', scheduleNote: '요일 변경은 내일부터 적용됩니다.',
+    create: '루틴 추가', edit: '루틴 수정', name: '습관 이름', namePlaceholder: '습관 이름', memo: '메모', optional: '선택', memoPlaceholder: '메모 (선택)', color: '색상', repeat: '반복 빈도', daily: '매일', selected: '요일 선택', submit: '만들기', save: '변경 저장', saving: '저장 중…', close: '닫기', nameError: '습관 이름을 입력해주세요.', daysError: '반복할 요일을 하나 이상 선택해주세요.', error: '저장하지 못했습니다. 다시 시도해주세요.', required: '필수', scheduleNote: '요일 변경은 내일부터 적용됩니다.',
     days: ['일', '월', '화', '수', '목', '금', '토'],
   },
   en: {
-    create: 'Add routine', edit: 'Edit routine', name: 'Habit name', namePlaceholder: 'Habit name', memo: 'Note', optional: 'Optional', memoPlaceholder: 'Note (optional)', color: 'Color', repeat: 'Repeat', daily: 'Every day', selected: 'Choose days', submit: 'Create routine', save: 'Save changes', saving: 'Saving…', close: 'Close', remove: 'Delete routine', confirm: 'Delete this routine?', confirmDetail: 'The routine and its records will leave your lists.', cancel: 'Cancel', deleteConfirm: 'Delete', nameError: 'Please enter a habit name.', daysError: 'Choose at least one day.', error: 'Could not save. Please try again.', required: 'Required', scheduleNote: 'Schedule changes apply from tomorrow.',
+    create: 'Add routine', edit: 'Edit routine', name: 'Habit name', namePlaceholder: 'Habit name', memo: 'Note', optional: 'Optional', memoPlaceholder: 'Note (optional)', color: 'Color', repeat: 'Repeat', daily: 'Every day', selected: 'Choose days', submit: 'Create routine', save: 'Save changes', saving: 'Saving…', close: 'Close', nameError: 'Please enter a habit name.', daysError: 'Choose at least one day.', error: 'Could not save. Please try again.', required: 'Required', scheduleNote: 'Schedule changes apply from tomorrow.',
     days: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
   },
 };
@@ -21,11 +22,11 @@ interface Props {
   language: 'ko' | 'en';
   busy: boolean;
   onSave: (input: RoutineInput) => Promise<void>;
-  onDelete?: () => Promise<void>;
+  returnFocus?: HTMLElement | null;
   onClose: () => void;
 }
 
-export function RoutineEditor({ routine, language, busy, onSave, onDelete, onClose }: Props) {
+export function RoutineEditor({ routine, language, busy, onSave, onClose, returnFocus }: Props) {
   const t = copy[language];
   const dialog = useRef<HTMLDialogElement>(null);
   const nameInput = useRef<HTMLInputElement>(null);
@@ -36,7 +37,7 @@ export function RoutineEditor({ routine, language, busy, onSave, onDelete, onClo
   const [color, setColor] = useState(routine?.color ?? routinePalette[0].value);
   const [daily, setDaily] = useState(initialDays.length === 7);
   const [days, setDays] = useState<Weekday[]>(initialDays);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [pointerFocus, setPointerFocus] = useState(false);
   const [error, setError] = useState<'nameError' | 'daysError' | 'error' | null>(null);
 
   useEffect(() => {
@@ -46,8 +47,10 @@ export function RoutineEditor({ routine, language, busy, onSave, onDelete, onClo
       nameInput.current?.focus({ preventScroll: true });
     }
     nameInput.current?.focus();
-    return () => { if (element?.open) element.close(); };
-  }, []);
+    const keyboard = () => setPointerFocus(false);
+    document.addEventListener('keydown', keyboard, true);
+    return () => { if (element?.open) element.close(); document.removeEventListener('keydown', keyboard, true); restoreRoutineFocus(returnFocus); };
+  }, [returnFocus]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -56,13 +59,6 @@ export function RoutineEditor({ routine, language, busy, onSave, onDelete, onClo
     if (!daily && days.length === 0) { setError('daysError'); return; }
     setError(null);
     try { await onSave({ name, memo, category, color, days: daily ? allDays : days }); }
-    catch { setError('error'); }
-  }
-
-  async function remove() {
-    if (busy || !onDelete) return;
-    setError(null);
-    try { await onDelete(); }
     catch { setError('error'); }
   }
 
@@ -94,18 +90,14 @@ export function RoutineEditor({ routine, language, busy, onSave, onDelete, onClo
           </div></fieldset>
           <fieldset className="repeat-field"><legend>{t.repeat}</legend>
             <div className="segmented-control repeat-control"><button type="button" className={daily ? 'selected' : ''} aria-pressed={daily} onClick={() => setDaily(true)}>{t.daily}</button><button type="button" className={!daily ? 'selected' : ''} aria-pressed={!daily} onClick={() => setDaily(false)}>{t.selected}</button></div>
-            {!daily && <div className="weekday-picker">{allDays.map(day => <button type="button" key={day} className={days.includes(day) ? 'selected' : ''} aria-pressed={days.includes(day)} aria-label={new Intl.DateTimeFormat(language, { weekday: 'long' }).format(new Date(2026, 0, 4 + day))} onClick={() => toggleDay(day)}>{t.days[day]}</button>)}</div>}
+            {!daily && <div className="weekday-picker" data-pointer-focus={pointerFocus} onPointerDownCapture={() => setPointerFocus(true)}>{allDays.map(day => <button type="button" key={day} className={days.includes(day) ? 'selected' : ''} aria-pressed={days.includes(day)} aria-label={new Intl.DateTimeFormat(language, { weekday: 'long' }).format(new Date(2026, 0, 4 + day))} onClick={() => toggleDay(day)}>{t.days[day]}</button>)}</div>}
             {routine && <p className="schedule-note">{t.scheduleNote}</p>}
           </fieldset>
         </fieldset>
         {error && <p className="form-error" role="alert">{t[error]}</p>}
         <button type="submit" className="primary-button editor-submit" disabled={busy}>{busy ? t.saving : routine ? t.save : t.submit}</button>
       </form>
-      {routine && onDelete && <div className="editor-delete">
-        {confirmDelete ? <div className="delete-confirmation" role="group" aria-label={t.confirm}>
-          <strong>{t.confirm}</strong><p>{t.confirmDetail}</p><div className="delete-confirmation-actions"><button type="button" className="secondary-button" onClick={() => setConfirmDelete(false)} disabled={busy}>{t.cancel}</button><button type="button" className="danger-button" onClick={() => void remove()} disabled={busy}>{t.deleteConfirm}</button></div>
-        </div> : <button type="button" className="delete-link" onClick={() => setConfirmDelete(true)} disabled={busy}>{t.remove}</button>}
-      </div>}
+
     </div>
   </dialog>;
 }

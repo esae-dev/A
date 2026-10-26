@@ -1,3 +1,4 @@
+import { routineAction } from './actions'
 import { expect, test, type Page } from '@playwright/test'
 import { contrastRatio } from './contrast'
 
@@ -83,7 +84,7 @@ for (const theme of ['light', 'dark'] as const) {
       await expect(page.getByRole('button', { name: `${routine.name} 완료 취소`, exact: true })).toBeVisible()
     }
     const before = await readData(page)
-    await page.getByRole('button', { name: '독서 수정', exact: true }).click()
+    await routineAction(page, '독서', 'edit', 'ko', false)
     await page.getByRole('button', { name: 'Lilac', exact: true }).click()
     await page.getByRole('button', { name: '변경 저장', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)

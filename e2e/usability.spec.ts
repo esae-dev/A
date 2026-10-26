@@ -1,0 +1,167 @@
+import { expect, test, type Page } from '@playwright/test'
+import type { Routine, Completion } from '../src/domain/types'
+import { routineAction } from './actions'
+
+test.use({ viewport: { width: 320, height: 568 }, timezoneId: 'Asia/Seoul', reducedMotion: 'reduce' })
+async function add(page: Page, name: string, language: 'ko' | 'en' = 'ko') {
+  await page.getByRole('button', { name: language === 'ko' ? '루틴 추가' : 'Add routine', exact: true }).first().click()
+  await page.getByLabel(language === 'ko' ? '습관 이름' : 'Habit name').fill(name)
+  await page.getByRole('button', { name: language === 'ko' ? '만들기' : 'Create routine', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+}
+async function data(page: Page) {
+  return page.evaluate(() => new Promise<{ routines: Routine[]; completions: Completion[]; version: number }>((resolve, reject) => {
+    const r = indexedDB.open('eha-habit')
+    r.onerror = () => reject(r.error)
+    r.onsuccess = () => {
+      const db = r.result, tx = db.transaction(['routines', 'completions'])
+      const routines = tx.objectStore('routines').getAll(), completions = tx.objectStore('completions').getAll()
+      tx.oncomplete = () => { db.close(); resolve({ routines: routines.result, completions: completions.result, version: db.version }) }
+    }
+  }))
+}
+
+for (const language of ['ko', 'en'] as const) test(`action menu stays on screen, supports keyboard, edit and safe direct deletion in ${language}`, async ({ page }) => {
+  const korean = language === 'ko'
+  await page.goto('./')
+  if (!korean) {
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('combobox', { name: '언어' }).selectOption('en')
+    await page.getByRole('button', { name: 'Dark', exact: true }).click()
+    await page.getByRole('button', { name: 'Home', exact: true }).click()
+  }
+  for (const name of ['A', 'B', 'C']) await add(page, name, language)
+  const name = korean ? '화면 가장자리의 긴 이름 운동 루틴 D' : 'A long weekend routine near the screen edge D'
+  await add(page, name, language)
+  await page.getByRole('button', { name: `${name} ${korean ? '완료하기' : 'Mark complete'}`, exact: true }).tap()
+  await expect(page.getByRole('button', { name: `${name} ${korean ? '완료 취소' : 'Undo completion'}`, exact: true })).toBeEnabled()
+  const trigger = page.getByRole('button', { name: `${name} ${korean ? '메뉴' : 'Actions'}`, exact: true })
+  await trigger.tap()
+  const menu = page.getByRole('menu')
+  await expect(menu).toBeVisible()
+  await expect(page.getByRole('menuitem')).toHaveText(korean ? ['수정', '삭제'] : ['Edit', 'Delete'])
+  const box = (await menu.boundingBox())!, nav = (await page.locator('.bottom-nav').boundingBox())!
+  expect(box.x).toBeGreaterThanOrEqual(8)
+  expect(box.x + box.width).toBeLessThanOrEqual(312)
+  expect(box.y).toBeGreaterThanOrEqual(8)
+  expect(box.y + box.height).toBeLessThanOrEqual(nav.y)
+  await page.screenshot({ path: `test-results/aeha-actions-${language}.png`, animations: 'disabled' })
+  await page.locator('.page-title').click()
+  await expect(menu).toHaveCount(0)
+  await trigger.focus()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('menuitem', { name: korean ? '수정' : 'Edit', exact: true })).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(page.getByRole('menuitem', { name: korean ? '삭제' : 'Delete', exact: true })).toBeFocused()
+  await page.keyboard.press('Home')
+  await expect(page.getByRole('menuitem', { name: korean ? '수정' : 'Edit', exact: true })).toBeFocused()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Escape')
+  await expect(menu).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(page.getByRole('menuitem', { name: korean ? '삭제' : 'Delete', exact: true })).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(menu).toHaveCount(0)
+  await expect(page.getByRole('button', { name: korean ? '루틴 추가' : 'Add routine', exact: true }).first()).toBeFocused()
+  await routineAction(page, name, 'edit', language, true)
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await expect(page.getByLabel(korean ? '습관 이름' : 'Habit name')).toHaveValue(name)
+  await expect(page.getByRole('button', { name: korean ? '루틴 삭제' : 'Delete routine', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: korean ? '닫기' : 'Close', exact: true }).click()
+  await expect(trigger).toBeFocused()
+  const before = await data(page)
+  await routineAction(page, name, 'delete', language, true)
+  const confirmation = page.getByRole('dialog', { name: korean ? '이 루틴을 삭제할까요?' : 'Delete this routine?', exact: true })
+  await expect(confirmation.getByText(name, { exact: true })).toBeVisible()
+  await expect(confirmation.locator('input,textarea')).toHaveCount(0)
+  await expect(confirmation.getByRole('button', { name: korean ? '취소' : 'Cancel', exact: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  expect(await data(page)).toEqual(before)
+  await expect(trigger).toBeFocused()
+  await routineAction(page, name, 'delete', language)
+  await page.getByRole('button', { name: korean ? '취소' : 'Cancel', exact: true }).click()
+  expect(await data(page)).toEqual(before)
+  await routineAction(page, name, 'delete', language)
+  await page.getByRole('dialog').getByRole('button', { name: korean ? '삭제' : 'Delete', exact: true }).click()
+  await expect(page.locator('.routine-card')).toHaveCount(3)
+  const after = await data(page), target = before.routines.find(r => r.name === name)!
+  expect(after.version).toBe(20)
+  expect(after.routines).toHaveLength(4)
+  expect(after.routines.find(r => r.id === target.id)?.deletedAt).toBeTruthy()
+  expect(after.routines.filter(r => r.id !== target.id)).toEqual(before.routines.filter(r => r.id !== target.id))
+  expect(after.completions).toEqual(before.completions)
+  await page.reload()
+  await expect(page.locator('.routine-card')).toHaveCount(3)
+})
+
+for (const theme of ['light', 'dark'] as const) test(`weekday selection separates touch/mouse focus from keyboard focus in ${theme}`, async ({ page }) => {
+  await page.goto('./')
+  if (theme === 'dark') {
+    await page.getByRole('button', { name: '설정', exact: true }).click()
+    await page.getByRole('button', { name: '다크', exact: true }).click()
+    await page.getByRole('button', { name: '홈', exact: true }).click()
+  }
+  await page.getByRole('button', { name: '루틴 추가', exact: true }).first().click()
+  await page.getByLabel('습관 이름').fill('요일 확인')
+  await page.getByRole('button', { name: '요일 선택', exact: true }).tap()
+  const monday = page.getByRole('button', { name: '월요일', exact: true }), tuesday = page.getByRole('button', { name: '화요일', exact: true })
+  await monday.tap()
+  await expect(monday).toHaveAttribute('aria-pressed', 'false')
+  await expect(monday).toHaveCSS('outline-style', 'none')
+  await expect(monday).toHaveCSS('box-shadow', 'none')
+  expect(await monday.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe(await tuesday.evaluate(el => getComputedStyle(el).backgroundColor))
+  await monday.click()
+  await monday.click()
+  await expect(monday).toHaveAttribute('aria-pressed', 'false')
+  await expect(monday).toHaveCSS('outline-style', 'none')
+  await monday.focus()
+  await page.keyboard.press('Tab')
+  await expect(tuesday).toBeFocused()
+  await page.keyboard.press('Space')
+  await expect(tuesday).toHaveAttribute('aria-pressed', 'false')
+  await expect(tuesday).toHaveCSS('outline-style', 'dashed')
+  await expect(tuesday).toHaveCSS('outline-offset', '-4px')
+  expect(await monday.evaluate(el => getComputedStyle(el).backgroundColor)).toBe(await tuesday.evaluate(el => getComputedStyle(el).backgroundColor))
+  await page.keyboard.press('Space')
+  await expect(tuesday).toHaveAttribute('aria-pressed', 'true')
+  await expect(tuesday).toHaveCSS('outline-style', 'dashed')
+  await page.screenshot({ path: `test-results/aeha-weekday-focus-${theme}.png`, animations: 'disabled' })
+  await page.getByRole('button', { name: '만들기', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect((await data(page)).routines[0].scheduleHistory[0].days).toEqual([0, 2, 3, 4, 5, 6])
+})
+
+test('comma schedules use effective history in both languages and compact rest days at 320px', async ({ page }) => {
+  await page.clock.setFixedTime(new Date('2026-10-26T12:00:00+09:00'))
+  await page.goto('./')
+  await add(page, '요일 이력')
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const r = indexedDB.open('eha-habit')
+    r.onerror = () => reject(r.error)
+    r.onsuccess = () => {
+      const db = r.result, tx = db.transaction('routines', 'readwrite'), store = tx.objectStore('routines'), all = store.getAll()
+      all.onsuccess = () => store.put({ ...all.result[0], createdDate: '2026-10-19', scheduleHistory: [
+        { effectiveFrom: '2026-10-26', days: [6, 2, 0] }, { effectiveFrom: '2026-10-27', days: [5, 2, 0] }, { effectiveFrom: '2026-10-19', days: [1, 3] },
+      ] })
+      tx.oncomplete = () => { db.close(); resolve() }
+    }
+  }))
+  await page.reload()
+  const before = await data(page), label = page.locator('.routine-meta')
+  await expect(label).toHaveAttribute('title', '오늘은 쉬는 날 (일,화,토)')
+  expect(await label.innerText()).toBe('일,화,토')
+  await expect(page.getByRole('button', { name: '요일 이력 오늘은 쉬는 날', exact: true })).toBeDisabled()
+  await page.setViewportSize({ width: 390, height: 844 })
+  expect(await label.innerText()).toBe('오늘은 쉬는 날 (일,화,토)')
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await page.getByRole('combobox', { name: '언어' }).selectOption('en')
+  await page.getByRole('button', { name: 'Home', exact: true }).click()
+  expect(await label.innerText()).toBe('Rest day (Sun,Tue,Sat)')
+  await page.clock.setFixedTime(new Date('2026-10-27T12:00:00+09:00'))
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')))
+  await expect(label).toHaveText('Sun,Tue,Fri')
+  await expect(page.getByRole('button', { name: '요일 이력 Mark complete', exact: true })).toBeEnabled()
+  expect((await data(page)).routines).toEqual(before.routines)
+  expect((await data(page)).completions).toEqual(before.completions)
+})

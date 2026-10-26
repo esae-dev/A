@@ -3,7 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#304565" />
+    <meta name="theme-color" content="#ffffff" />
+    <style>
+      html,body{margin:0;background:#f6f5f3;color-scheme:light}
+      html[data-theme="dark"],html[data-theme="dark"] body{background:#121a27;color-scheme:dark}
+      #launch-brand{display:none;position:fixed;inset:0;z-index:50;place-items:center;background:#f6f5f3;pointer-events:none}
+      html[data-theme="dark"] #launch-brand{background:#121a27}
+      html[data-launch="pending"] #launch-brand,html[data-launch="ready"] #launch-brand{display:grid}
+      #launch-brand img{grid-area:1/1;width:min(248px,66vw);height:auto;opacity:0;animation:launch-logo-in 180ms ease-out 100ms both}
+      #launch-brand .launch-dark{display:none}
+      html[data-theme="dark"] #launch-brand .launch-light{display:none}
+      html[data-theme="dark"] #launch-brand .launch-dark{display:block}
+      html[data-launch="ready"] #launch-brand{opacity:0;visibility:hidden;transition:opacity 120ms ease-out,visibility 0s linear 120ms}
+      @keyframes launch-logo-in{from{opacity:0}to{opacity:1}}
+      @media(prefers-reduced-motion:reduce){#launch-brand{display:none!important}}
+    </style>
+    <script>
+      (() => {
+        let theme = 'light';
+        try { if (localStorage.getItem('aeha-theme-hint') === 'dark') theme = 'dark'; } catch {}
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#161f2d' : '#ffffff';
+        if ((matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          document.documentElement.dataset.launch = 'pending';
+          performance.mark('aeha-launch-start');
+        }
+      })();
+    </script>
     <meta name="description" content="AEHA — 습관 기록" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -14,6 +40,10 @@
     <title>AEHA</title>
   </head>
   <body>
+    <div id="launch-brand" aria-hidden="true">
+      <img class="launch-light" src="%BASE_URL%brand/logo-light.svg" alt="" />
+      <img class="launch-dark" src="%BASE_URL%brand/logo-dark.svg" alt="" />
+    </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

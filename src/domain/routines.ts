@@ -34,13 +34,18 @@ export function normalizeRoutineInput(input: RoutineInput): RoutineInput {
   return { name, memo, category: input.category, color: input.color.toLowerCase(), days: normalizeDays(input.days) };
 }
 
-/** Most recent effective schedule governs a day; creation's local day is inclusive. */
-export function isScheduled(routine: Routine, date: DateKey): boolean {
-  if (date < routine.createdDate) return false;
-  const schedule = routine.scheduleHistory.reduce<ScheduleChange | undefined>((active, candidate) => {
+/** Shared by scheduling and its label, including legacy histories out of order. */
+export function effectiveSchedule(routine: Routine, date: DateKey): ScheduleChange | undefined {
+  return routine.scheduleHistory.reduce<ScheduleChange | undefined>((active, candidate) => {
     if (candidate.effectiveFrom > date) return active;
     return !active || candidate.effectiveFrom >= active.effectiveFrom ? candidate : active;
   }, undefined);
+}
+
+/** Most recent effective schedule governs a day; creation's local day is inclusive. */
+export function isScheduled(routine: Routine, date: DateKey): boolean {
+  if (date < routine.createdDate) return false;
+  const schedule = effectiveSchedule(routine, date);
   return schedule?.days.includes(dayOfWeek(date)) ?? false;
 }
 

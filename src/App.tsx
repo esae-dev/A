@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { repository } from './data/repository'
 import { STORAGE_WAIT_MS } from './data/db'
 import { localDateKey } from './domain/dates'
@@ -11,6 +11,8 @@ import { RoutineEditor } from './components/RoutineEditor'
 import { StreakCard } from './components/StreakCard'
 import { BrandLogo } from './components/BrandLogo'
 import { RoutineList } from './components/RoutineList'
+import { DeleteRoutineDialog } from './components/DeleteRoutineDialog'
+import { applyTheme, finishLaunch, initialTheme } from './theme'
 
 type Page = 'home' | 'streak' | 'settings'
 type Snapshot = { routines: Routine[]; completions: Completion[]; preferences: Preferences }
@@ -21,6 +23,9 @@ export default function App() {
   const [today, setToday] = useState(localDateKey)
   const [error, setError] = useState(false)
   const [editor, setEditor] = useState<Routine | 'new' | null>(null)
+  const [deleting, setDeleting] = useState<Routine | null>(null)
+  const returnFocus = useRef<HTMLElement | null>(null)
+  const [bootTheme] = useState(initialTheme)
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadDelayed, setLoadDelayed] = useState(false)
@@ -30,9 +35,12 @@ export default function App() {
   const controlsBusy = busy || unavailable
   const refreshInFlight = useRef<Promise<void> | null>(null)
   const mutationPending = useRef(false)
-  const preferences = snapshot?.preferences ?? { language: 'ko', theme: 'light' }
+  const preferences = snapshot?.preferences ?? { language: 'ko', theme: bootTheme }
+  const preferencesReady = snapshot !== null
   const language = preferences.language
   const t = messages[language]
+
+  useLayoutEffect(() => { finishLaunch(Boolean(error || notice)) }, [error, notice])
 
   const refresh = useCallback(() => {
     if (refreshInFlight.current) return refreshInFlight.current
@@ -77,9 +85,24 @@ export default function App() {
   }, [language, page, t])
 
   useEffect(() => {
-    document.documentElement.dataset.theme = preferences.theme
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', preferences.theme === 'dark' ? '#182336' : '#304565')
-  }, [preferences.theme])
+    applyTheme(preferences.theme, preferencesReady)
+  }, [preferences.theme, preferencesReady])
+
+  function openEditor(routine: Routine | 'new', opener = document.activeElement as HTMLElement | null) {
+    returnFocus.current = opener
+    setEditor(routine)
+  }
+
+  function confirmDelete(routine: Routine, opener: HTMLElement) {
+    returnFocus.current = opener
+    setDeleting(routine)
+  }
+
+  async function deleteRoutine() {
+    if (!deleting) return
+    await mutate(() => repository.deleteRoutine(deleting.id))
+    setDeleting(null)
+  }
 
   async function mutate(action: () => Promise<unknown>, closeEditor = false) {
     if (mutationPending.current) return
@@ -139,7 +162,7 @@ export default function App() {
       <main className={`page-main${page === 'home' ? ' page-main-home' : ''}`} id="main">
         <div className="page-heading">
           {page === 'home' && <p className="eyebrow">{dateLabel}</p>}
-          <h1 className="page-title">{page === 'home' ? t.todayTitle : t[page]}</h1>
+          <h1 className="page-title" tabIndex={-1}>{page === 'home' ? t.todayTitle : t[page]}</h1>
         </div>
 
         {notice && <div className="storage-banner" role="alert">
@@ -167,16 +190,16 @@ export default function App() {
           {routines.length === 0 ? <div className="empty-state">
             <div className="empty-symbol"><Icon name="check" size={28} /></div>
             <h2>{t.emptyTitle}</h2>
-            <button className="primary-button" disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
+            <button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
           </div> : <RoutineList key={today} routines={routines} completions={completions} today={today} language={language}
-            busy={controlsBusy} onToggle={toggleRoutine} onEdit={setEditor}
+            busy={controlsBusy} onToggle={toggleRoutine} onEdit={openEditor} onDelete={confirmDelete}
             onMove={(activeId, overId) => mutate(() => repository.moveRoutine(activeId, overId))} />}
-          <button className="fab" aria-label={t.add} disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={26} /></button>
+          <button className="fab" aria-label={t.add} disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={26} /></button>
         </>}
 
         {snapshot && page === 'streak' && (routines.length > 0
           ? <div className="streak-list">{routines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
-          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
+          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
 
         {snapshot && page === 'settings' && <>
           <div className="settings-card">
@@ -202,8 +225,9 @@ export default function App() {
         </button>)}
       </nav>
       {editor && <RoutineEditor routine={editor === 'new' ? undefined : editor} language={language} busy={controlsBusy}
-        onSave={saveRoutine} onClose={() => { if (!busy) setEditor(null) }}
-        onDelete={editor === 'new' ? undefined : () => mutate(() => repository.deleteRoutine(editor.id), true)} />}
+        onSave={saveRoutine} onClose={() => { if (!busy) setEditor(null) }} returnFocus={returnFocus.current} />}
+      {deleting && <DeleteRoutineDialog routine={deleting} language={language} busy={controlsBusy} returnFocus={returnFocus.current}
+        onDelete={deleteRoutine} onClose={() => { if (!busy) setDeleting(null) }} />}
     </div>
   )
 }

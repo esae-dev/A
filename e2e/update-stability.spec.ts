@@ -1,3 +1,4 @@
+import { standalone } from './standalone'
 import { expect, test, type Page } from '@playwright/test'
 
 test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Seoul' })
@@ -64,6 +65,7 @@ async function data(page: Page) {
 test('a second tab blocks upgrade, shows recovery guidance, and closing it restores every record', async ({ page, context }) => {
   const holder = await context.newPage()
   const old = await seed(holder)
+  await standalone(page)
   await page.addInitScript(() => {
     const open = IDBFactory.prototype.open
     window.aehaOpenRequests = 0
@@ -76,6 +78,7 @@ test('a second tab blocks upgrade, shows recovery guidance, and closing it resto
   await page.goto('./')
   await expect(page.getByRole('alert')).toContainText('다른 AEHA 창')
   await expect(page.getByRole('alert')).toContainText('다른 AEHA 창을 닫고 다시 시도')
+  await expect(page.locator('#launch-brand')).toBeHidden()
   await expect(page.getByText('루틴을 불러오는 중…', { exact: true })).toHaveCount(0)
   const requests = await page.evaluate(() => window.aehaOpenRequests)
   for (let attempt = 0; attempt < 3; attempt++) await page.getByRole('button', { name: '다시 시도', exact: true }).click()

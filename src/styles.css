@@ -99,6 +99,7 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .routine-content { min-width: 0; flex: 1; }
 .routine-name { font-size: 15px; font-weight: 600; letter-spacing: -.2px; line-height: 1.5; overflow-wrap: anywhere; margin: 0 0 5px; }
 .routine-meta { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
+.routine-meta { overflow-wrap: anywhere; }
 .routine-memo { grid-column: 3 / -1; grid-row: 2; min-width: 0; padding: 9px 11px; border-top: 1px solid var(--border); border-radius: 6px; background: var(--surface-soft); font-size: 12px; line-height: 1.75; color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; margin: 0; }
 .routine-actions { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
 .check-button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: transparent; color: var(--primary); position: relative; }
@@ -110,6 +111,13 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .edit-button, .icon-button { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: transparent; color: var(--muted); flex-shrink: 0; }
 .edit-button { width: 44px; min-height: 44px; }
 .edit-button:hover, .icon-button:hover { background: var(--surface-soft); }
+.routine-menu { position: fixed; z-index: 60; width: 168px; max-width: calc(100vw - 16px); padding: 5px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 20px #121a2718; }
+.routine-menu button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 6px; text-align: left; background: transparent; font-size: 14px; }
+.routine-menu button:hover, .routine-menu button:focus-visible { background: var(--surface-soft); }
+.routine-menu .menu-delete { color: var(--danger); }
+.delete-dialog h2 { font-size: 21px; font-weight: 600; margin-bottom: 14px; }
+.delete-dialog .form-error { margin: 0 0 16px; }
+.delete-routine-name { overflow-wrap: anywhere; color: var(--muted); font-size: 14px; line-height: 1.6; margin-bottom: 22px; }
 .is-off { background: transparent; }
 .is-off .routine-accent { opacity: .4; }
 .is-off .routine-name { color: var(--muted); }
@@ -206,14 +214,12 @@ fieldset { min-width: 0; }
 .weekday-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 12px; }
 .weekday-picker button { min-width: 0; min-height: 46px; padding: 5px 0; border: 1px solid var(--control-border); border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 12px; font-weight: 550; }
 .weekday-picker button.selected { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600; }
+.weekday-picker button:focus-visible { outline: 2px dashed var(--text); outline-offset: -4px; }
+.weekday-picker button.selected:focus-visible { outline-color: var(--on-primary); }
+.weekday-picker[data-pointer-focus="true"] button:focus { outline: none; }
 .schedule-note { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .editor-submit { width: 100%; margin-top: 22px; }
 .form-error { font-size: 13px; color: var(--danger); line-height: 1.6; margin: 16px 0 -10px; }
-.editor-delete { border-top: 1px solid var(--border); margin-top: 20px; padding-top: 12px; text-align: center; }
-.delete-link { color: var(--danger); font-size: 13px; min-height: 44px; padding: 10px 20px; background: transparent; }
-.delete-confirmation { padding: 8px 0 0; }
-.delete-confirmation strong { font-size: 14px; font-weight: 650; }
-.delete-confirmation p { color: var(--muted); font-size: 12px; margin: 8px 0 14px; line-height: 1.7; }
 .delete-confirmation-actions { display: flex; gap: 8px; }
 .delete-confirmation-actions > button { flex: 1; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
@@ -232,6 +238,7 @@ fieldset { min-width: 0; }
   .routine-card { gap: 9px; padding: 17px 8px 17px 13px; }
   .routine-actions { gap: 0; }
   .routine-name { font-size: 14px; }
+  .routine-meta.is-rest .rest-context { display: none; }
   .streak-card { padding: 20px 16px; }
   .editor-sheet { padding-left: 18px; padding-right: 18px; }
   .color-palette { justify-content: space-between; gap: 0; flex-wrap: nowrap; }
