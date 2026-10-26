@@ -33,7 +33,10 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
   }
 
   return {
+    getStorageStatus: database.getStorageStatus,
+    subscribeStorageStatus: database.subscribeStorageStatus,
     async getSnapshot(): Promise<HabitSnapshot> {
+      await database.prepare();
       return database.transaction('rw', database.routines, database.completions, database.preferences, async () => {
         const [allRoutines, allCompletions, savedPreferences] = await Promise.all([
           database.routines.toArray(),
@@ -60,6 +63,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async createRoutine(input: RoutineInput): Promise<Routine> {
+      await database.prepare();
       const values = normalizeRoutineInput(input);
       const date = now();
       const timestamp = date.toISOString();
@@ -85,6 +89,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async updateRoutine(id: string, input: RoutineInput): Promise<Routine> {
+      await database.prepare();
       const { days, name, memo, category, color } = normalizeRoutineInput(input);
       return database.transaction('rw', database.routines, async () => {
         const routine = await requireRoutine(id);
@@ -105,6 +110,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async deleteRoutine(id: string): Promise<void> {
+      await database.prepare();
       await database.transaction('rw', database.routines, async () => {
         const routine = await database.routines.get(id);
         // Retain both routine and completion records for a future sync adapter.
@@ -115,6 +121,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async setCompletion(routineId: string, date: DateKey, completed: boolean): Promise<void> {
+      await database.prepare();
       await database.transaction('rw', database.routines, database.completions, async () => {
         const routine = await requireRoutine(routineId);
         const current = now();
@@ -146,6 +153,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async savePreferences(preferences: Preferences): Promise<void> {
+      await database.prepare();
       if (
         !supportedLanguages.some(language => language.value === preferences.language) ||
         !themes.includes(preferences.theme)
@@ -156,6 +164,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
     },
 
     async moveRoutine(activeId: string, overId: string): Promise<boolean> {
+      await database.prepare();
       return database.transaction('rw', database.routines, database.completions, async () => {
         // Re-read data inside the transaction, so stale tabs cannot drop new routines
         // or overwrite completion/schedule changes made while a drag was in progress.

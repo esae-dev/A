@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { repository } from './data/repository'
+import { STORAGE_WAIT_MS } from './data/db'
 import { localDateKey } from './domain/dates'
 import { isScheduled } from './domain/routines'
 import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
@@ -21,17 +22,40 @@ export default function App() {
   const [error, setError] = useState(false)
   const [editor, setEditor] = useState<Routine | 'new' | null>(null)
   const [busy, setBusy] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadDelayed, setLoadDelayed] = useState(false)
+  const storageStatus = useSyncExternalStore(repository.subscribeStorageStatus, repository.getStorageStatus)
+  const notice = storageStatus === 'reload-required' ? 'reload' : storageStatus === 'blocked' ? 'blocked' : storageStatus === 'slow' || loadDelayed ? 'slow' : null
+  const unavailable = notice !== null
+  const controlsBusy = busy || unavailable
+  const refreshInFlight = useRef<Promise<void> | null>(null)
   const mutationPending = useRef(false)
   const preferences = snapshot?.preferences ?? { language: 'ko', theme: 'light' }
   const language = preferences.language
   const t = messages[language]
 
-  const refresh = useCallback(async () => {
-    try {
-      setSnapshot(await repository.getSnapshot())
-      setError(false)
-    } catch { setError(true) }
+  const refresh = useCallback(() => {
+    if (refreshInFlight.current) return refreshInFlight.current
+    setLoading(true)
+    setLoadDelayed(false)
+    const request = (async () => {
+      try {
+        setSnapshot(await repository.getSnapshot())
+        setError(false)
+      } catch { setError(true) }
+      finally { setLoading(false); setLoadDelayed(false) }
+    })()
+    refreshInFlight.current = request
+    void request.finally(() => { if (refreshInFlight.current === request) refreshInFlight.current = null })
+    return request
   }, [])
+
+  useEffect(() => {
+    if (!loading) return
+    // Also cover an opened DB whose initial read is stalled (no blocked event).
+    const timer = window.setTimeout(() => setLoadDelayed(true), STORAGE_WAIT_MS)
+    return () => clearTimeout(timer)
+  }, [loading])
 
   useEffect(() => {
     void refresh()
@@ -95,13 +119,13 @@ export default function App() {
     void mutate(() => repository.savePreferences({ ...preferences, ...next })).catch(() => {})
   }
 
-  function toggleRoutine(routine: Routine) {
+  async function toggleRoutine(routine: Routine) {
     // A backgrounded app or a click at midnight can precede the next clock tick.
     const date = localDateKey()
     setToday(date)
     if (!isScheduled(routine, date)) return
     const completed = completions.some(c => c.routineId === routine.id && c.date === date && c.completed)
-    void mutate(() => repository.setCompletion(routine.id, date, !completed)).catch(() => {})
+    await mutate(() => repository.setCompletion(routine.id, date, !completed))
   }
 
   return (
@@ -118,11 +142,19 @@ export default function App() {
           <h1 className="page-title">{page === 'home' ? t.todayTitle : t[page]}</h1>
         </div>
 
-        {error && <div className="error-banner" role="alert">
+        {notice && <div className="storage-banner" role="alert">
+          <strong>{notice === 'reload' ? t.storageReloadTitle : notice === 'blocked' ? t.storageBlockedTitle : t.storageSlowTitle}</strong>
+          <p>{notice === 'reload' ? t.storageReloadBody : t.storageWaitBody}</p>
+          <div className="storage-actions">
+            {notice !== 'reload' && <button className="secondary-button" onClick={() => void refresh()}>{t.retry}</button>}
+            <button className="secondary-button" onClick={() => window.location.reload()}>{t.reload}</button>
+          </div>
+        </div>}
+        {error && !notice && <div className="error-banner" role="alert">
           <p>{t.error}</p><button className="secondary-button" onClick={() => void refresh()}>{t.retry}</button>
         </div>}
 
-        {!snapshot && !error && <p className="loading-state" role="status">{t.loading}</p>}
+        {!snapshot && !error && !notice && <p className="loading-state" role="status">{t.loading}</p>}
 
         {snapshot && page === 'home' && <>
           {routines.length > 0 && <section className="today-summary" aria-label={t.todayDone}>
@@ -135,29 +167,29 @@ export default function App() {
           {routines.length === 0 ? <div className="empty-state">
             <div className="empty-symbol"><Icon name="check" size={28} /></div>
             <h2>{t.emptyTitle}</h2>
-            <button className="primary-button" onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
+            <button className="primary-button" disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
           </div> : <RoutineList key={today} routines={routines} completions={completions} today={today} language={language}
-            busy={busy} onToggle={toggleRoutine} onEdit={setEditor}
+            busy={controlsBusy} onToggle={toggleRoutine} onEdit={setEditor}
             onMove={(activeId, overId) => mutate(() => repository.moveRoutine(activeId, overId))} />}
-          <button className="fab" aria-label={t.add} disabled={busy} onClick={() => setEditor('new')}><Icon name="plus" size={26} /></button>
+          <button className="fab" aria-label={t.add} disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={26} /></button>
         </>}
 
         {snapshot && page === 'streak' && (routines.length > 0
           ? <div className="streak-list">{routines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
-          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
+          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
 
         {snapshot && page === 'settings' && <>
           <div className="settings-card">
             <section className="setting-row">
               <label className="setting-label" htmlFor="language-select">{t.language}</label>
-              <select className="language-select" id="language-select" value={language} disabled={busy} onChange={event => changePreferences({ language: event.target.value as Language })}>
+              <select className="language-select" id="language-select" value={language} disabled={controlsBusy} onChange={event => changePreferences({ language: event.target.value as Language })}>
                 {supportedLanguages.map(item => <option key={item.value} value={item.value} lang={item.value}>{item.label}</option>)}
               </select>
             </section>
             <section className="setting-row">
               <h2 className="setting-label" id="theme-label">{t.theme}</h2>
               <div className="segmented-control" role="group" aria-labelledby="theme-label">
-                {themes.map(value => <button key={value} disabled={busy} className={preferences.theme === value ? 'selected' : ''} aria-pressed={preferences.theme === value} onClick={() => changePreferences({ theme: value })}>{t[value]}</button>)}
+                {themes.map(value => <button key={value} disabled={controlsBusy} className={preferences.theme === value ? 'selected' : ''} aria-pressed={preferences.theme === value} onClick={() => changePreferences({ theme: value })}>{t[value]}</button>)}
               </div>
             </section>
           </div>
@@ -169,7 +201,7 @@ export default function App() {
           <Icon name={value} size={23} /><span>{t[value]}</span>
         </button>)}
       </nav>
-      {editor && <RoutineEditor routine={editor === 'new' ? undefined : editor} language={language} busy={busy}
+      {editor && <RoutineEditor routine={editor === 'new' ? undefined : editor} language={language} busy={controlsBusy}
         onSave={saveRoutine} onClose={() => { if (!busy) setEditor(null) }}
         onDelete={editor === 'new' ? undefined : () => mutate(() => repository.deleteRoutine(editor.id), true)} />}
     </div>

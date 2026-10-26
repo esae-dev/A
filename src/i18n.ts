@@ -15,6 +15,11 @@ export const messages = {
     dragInstructions: '핸들을 드래그하거나 스페이스 키를 누른 뒤 위아래 방향키로 이동하세요. 같은 상태의 루틴끼리 순서를 바꿀 수 있습니다. 스페이스로 저장하고 Escape로 취소합니다.',
     dragStart: '이동을 시작합니다.', dragOver: '위치로 이동합니다.', dragEnd: '이동을 마쳤습니다.', dragCancel: '순서 변경을 취소했습니다.',
     orderSaved: '순서를 저장했습니다.', orderError: '순서를 저장하지 못했습니다. 다시 시도해 주세요.',
+    storageBlockedTitle: '다른 AEHA 창에서 업데이트를 기다리고 있어요.',
+    storageSlowTitle: '기록을 여는 데 시간이 걸리고 있어요.',
+    storageWaitBody: 'Chrome 탭이나 설치된 AEHA 창이 기록을 사용 중일 수 있습니다. 다른 AEHA 창을 닫고 다시 시도해 주세요. 기록은 삭제하지 않습니다.',
+    storageReloadTitle: 'AEHA 업데이트를 위해 연결을 닫았습니다.',
+    storageReloadBody: '기록은 보존되어 있습니다. 이 창을 새로고침해 최신 버전으로 계속해 주세요.', reload: '새로고침',
   },
   en: {
     home: 'Home', streak: 'Streaks', settings: 'Settings', todayTitle: 'Today’s routines',
@@ -30,6 +35,11 @@ export const messages = {
     dragInstructions: 'Drag the handle, or press Space and use Up and Down to move within the same status group. Press Space to save or Escape to cancel.',
     dragStart: 'Picked up.', dragOver: 'position.', dragEnd: 'Dropped.', dragCancel: 'Reordering canceled.',
     orderSaved: 'Order saved.', orderError: 'Could not save the order. Please try again.',
+    storageBlockedTitle: 'Waiting for another AEHA window to finish updating.',
+    storageSlowTitle: 'Your records are taking longer to open.',
+    storageWaitBody: 'A Chrome tab or installed AEHA window may still be using your records. Close other AEHA windows and try again. Your records will not be deleted.',
+    storageReloadTitle: 'The connection was closed for an AEHA update.',
+    storageReloadBody: 'Your records are preserved. Reload this window to continue with the latest version.', reload: 'Reload',
   },
 } satisfies Record<Language, Record<string, string>>
 
