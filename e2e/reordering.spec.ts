@@ -133,6 +133,9 @@ test('supports real touch drag, keyboard reorder/cancel and separate check/edit 
   await page.keyboard.press('Space')
   await expect(handle).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('status').filter({ hasText: 'C, C 위치로 이동합니다.' })).toHaveCount(1)
+  // KeyboardSensor attaches its key listener in the next timer turn. Let the
+  // activation paint finish before sending the next input on fast CI runners.
+  await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))))
   await page.keyboard.press('ArrowUp')
   await expect(page.getByRole('status').filter({ hasText: 'C, B 위치로 이동합니다.' })).toHaveCount(1)
   await page.keyboard.press('Space')
