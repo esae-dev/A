@@ -141,7 +141,8 @@ html[data-theme="dark"] .fab { color: #131b2b; }
 .nav-item.active { color: var(--primary); font-weight: 600; }
 .nav-item svg { width: 22px; height: 22px; stroke-width: 1.65; }
 .settings-card { border-radius: 14px; border: 1px solid var(--border); background: var(--surface); padding: 0 18px; }
-.setting-row { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 20px 0; }
+.setting-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); align-items: center; gap: 12px; padding: 20px 0; }
+.setting-row > :last-child { min-width: 0; width: 100%; }
 .setting-row + .setting-row { border-top: 1px solid var(--border); }
 .setting-label { font-size: 14px; font-weight: 600; margin: 0; }
 .segmented-control { display: flex; padding: 4px; gap: 3px; background: var(--surface-soft); border-radius: 10px; }
@@ -229,7 +230,7 @@ fieldset { min-width: 0; }
   .page-main { padding-top: 4px; }
   .page-heading { margin-bottom: 22px; }
   .routine-card { padding-top: 18px; padding-bottom: 18px; }
-  .setting-row { grid-template-columns: 110px 1fr; align-items: center; }
+  .setting-row { grid-template-columns: 80px minmax(0, 1fr); gap: 16px; }
   .streak-card { padding: 22px; }
 }
 @media (max-width: 360px) {
@@ -245,6 +246,7 @@ fieldset { min-width: 0; }
   .color-option { width: 40px; height: 44px; padding: 4px 2px; }
   .weekday-picker { gap: 2px; }
   .settings-card { padding-left: 16px; padding-right: 16px; }
+  .setting-row { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }
 /* Keep the add action clear of routine controls on short mobile viewports. */
 @media (max-height: 650px) {

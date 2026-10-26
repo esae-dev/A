@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { Routine, RoutineInput, Weekday } from '../domain/types';
 import { Icon } from './Icon';
-import { routinePalette } from '../config';
+import { routinePalette, weekdayDisplayOrder } from '../config';
 import { contrastInk } from './colorContrast';
 import { restoreRoutineFocus } from './DeleteRoutineDialog';
 
@@ -90,7 +90,7 @@ export function RoutineEditor({ routine, language, busy, onSave, onClose, return
           </div></fieldset>
           <fieldset className="repeat-field"><legend>{t.repeat}</legend>
             <div className="segmented-control repeat-control"><button type="button" className={daily ? 'selected' : ''} aria-pressed={daily} onClick={() => setDaily(true)}>{t.daily}</button><button type="button" className={!daily ? 'selected' : ''} aria-pressed={!daily} onClick={() => setDaily(false)}>{t.selected}</button></div>
-            {!daily && <div className="weekday-picker" data-pointer-focus={pointerFocus} onPointerDownCapture={() => setPointerFocus(true)}>{allDays.map(day => <button type="button" key={day} className={days.includes(day) ? 'selected' : ''} aria-pressed={days.includes(day)} aria-label={new Intl.DateTimeFormat(language, { weekday: 'long' }).format(new Date(2026, 0, 4 + day))} onClick={() => toggleDay(day)}>{t.days[day]}</button>)}</div>}
+            {!daily && <div className="weekday-picker" data-pointer-focus={pointerFocus} onPointerDownCapture={() => setPointerFocus(true)}>{weekdayDisplayOrder.map(day => <button type="button" key={day} className={days.includes(day) ? 'selected' : ''} aria-pressed={days.includes(day)} aria-label={new Intl.DateTimeFormat(language, { weekday: 'long' }).format(new Date(2026, 0, 4 + day))} onClick={() => toggleDay(day)}>{t.days[day]}</button>)}</div>}
             {routine && <p className="schedule-note">{t.scheduleNote}</p>}
           </fieldset>
         </fieldset>

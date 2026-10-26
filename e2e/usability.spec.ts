@@ -108,6 +108,7 @@ for (const theme of ['light', 'dark'] as const) test(`weekday selection separate
   await page.getByRole('button', { name: '루틴 추가', exact: true }).first().click()
   await page.getByLabel('습관 이름').fill('요일 확인')
   await page.getByRole('button', { name: '요일 선택', exact: true }).tap()
+  expect(await page.locator('.weekday-picker button').evaluateAll(buttons => buttons.map(button => button.getAttribute('aria-label')))).toEqual(['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'])
   const monday = page.getByRole('button', { name: '월요일', exact: true }), tuesday = page.getByRole('button', { name: '화요일', exact: true })
   await monday.tap()
   await expect(monday).toHaveAttribute('aria-pressed', 'false')
@@ -139,31 +140,33 @@ test('comma schedules use effective history in both languages and compact rest d
   await page.clock.setFixedTime(new Date('2026-10-26T12:00:00+09:00'))
   await page.goto('./')
   await add(page, '요일 이력')
+  await add(page, '화금일 루틴')
   await page.evaluate(() => new Promise<void>((resolve, reject) => {
     const r = indexedDB.open('eha-habit')
     r.onerror = () => reject(r.error)
     r.onsuccess = () => {
       const db = r.result, tx = db.transaction('routines', 'readwrite'), store = tx.objectStore('routines'), all = store.getAll()
-      all.onsuccess = () => store.put({ ...all.result[0], createdDate: '2026-10-19', scheduleHistory: [
-        { effectiveFrom: '2026-10-26', days: [6, 2, 0] }, { effectiveFrom: '2026-10-27', days: [5, 2, 0] }, { effectiveFrom: '2026-10-19', days: [1, 3] },
-      ] })
+      all.onsuccess = () => all.result.forEach((routine: Routine) => store.put({ ...routine, createdDate: '2026-10-19', scheduleHistory: routine.name === '요일 이력' ? [
+        { effectiveFrom: '2026-10-26', days: [5, 2, 0] }, { effectiveFrom: '2026-10-27', days: [6, 2] }, { effectiveFrom: '2026-10-19', days: [1, 3] },
+      ] : [{ effectiveFrom: '2026-10-19', days: [0, 5, 2] }] }))
       tx.oncomplete = () => { db.close(); resolve() }
     }
   }))
   await page.reload()
-  const before = await data(page), label = page.locator('.routine-meta')
-  await expect(label).toHaveAttribute('title', '오늘은 쉬는 날 (일,화,토)')
-  expect(await label.innerText()).toBe('일,화,토')
+  const before = await data(page), label = page.locator('.routine-card').filter({ has: page.getByRole('heading', { name: '요일 이력', exact: true }) }).locator('.routine-meta')
+  await expect(label).toHaveAttribute('title', '오늘은 쉬는 날 (화,금,일)')
+  expect(await label.innerText()).toBe('화,금,일')
   await expect(page.getByRole('button', { name: '요일 이력 오늘은 쉬는 날', exact: true })).toBeDisabled()
   await page.setViewportSize({ width: 390, height: 844 })
-  expect(await label.innerText()).toBe('오늘은 쉬는 날 (일,화,토)')
+  expect(await label.innerText()).toBe('오늘은 쉬는 날 (화,금,일)')
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('combobox', { name: '언어' }).selectOption('en')
   await page.getByRole('button', { name: 'Home', exact: true }).click()
-  expect(await label.innerText()).toBe('Rest day (Sun,Tue,Sat)')
+  expect(await label.innerText()).toBe('Rest day (Tue,Fri,Sun)')
   await page.clock.setFixedTime(new Date('2026-10-27T12:00:00+09:00'))
   await page.evaluate(() => window.dispatchEvent(new Event('focus')))
-  await expect(label).toHaveText('Sun,Tue,Fri')
+  await expect(label).toHaveText('Tue,Sat')
+  await expect(page.locator('.routine-card').filter({ has: page.getByRole('heading', { name: '화금일 루틴', exact: true }) }).locator('.routine-meta')).toHaveText('Tue,Fri,Sun')
   await expect(page.getByRole('button', { name: '요일 이력 Mark complete', exact: true })).toBeEnabled()
   expect((await data(page)).routines).toEqual(before.routines)
   expect((await data(page)).completions).toEqual(before.completions)

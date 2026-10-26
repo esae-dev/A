@@ -66,17 +66,27 @@ test('a dark persisted preference is applied before the module and stays dark on
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.addInitScript(() => {
     const frames: string[] = []
+    const logoFrames: boolean[] = []
+    ;(window as unknown as { logoFrames: boolean[] }).logoFrames = logoFrames
     ;(window as unknown as { themeFrames: string[] }).themeFrames = frames
-    const sample = () => { frames.push(document.documentElement.dataset.theme ?? ''); if (frames.length < 40) requestAnimationFrame(sample) }
+    const sample = () => {
+      frames.push(document.documentElement.dataset.theme ?? '')
+      const layer = document.getElementById('launch-brand'), image = layer?.querySelector<HTMLImageElement>('.launch-dark')
+      logoFrames.push(Boolean(layer && image && image.naturalWidth && getComputedStyle(layer).display !== 'none' && getComputedStyle(layer).visibility === 'visible' && Number(getComputedStyle(layer).opacity) > 0 && Number(getComputedStyle(image).opacity) > 0))
+      if (frames.length < 40) requestAnimationFrame(sample)
+    }
     requestAnimationFrame(sample)
   })
   await page.reload()
   await expect(page.getByRole('heading', { name: '오늘의 루틴', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: '설정', exact: true }).click()
+  await expect(page.getByRole('heading', { name: '설정', exact: true })).toBeVisible()
   await expect(page.locator('#launch-brand')).toBeHidden()
   await expect.poll(() => page.evaluate(() => (window as unknown as { themeFrames: string[] }).themeFrames.length)).toBeGreaterThan(0)
   const frames = await page.evaluate(() => (window as unknown as { themeFrames: string[] }).themeFrames)
   expect(frames.length).toBeGreaterThan(0)
   expect(frames.every(theme => theme === 'dark')).toBe(true)
+  expect(await page.evaluate(() => (window as unknown as { logoFrames: boolean[] }).logoFrames.some(Boolean))).toBe(true)
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#161f2d')
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('button', { name: '라이트', exact: true }).click()

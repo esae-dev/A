@@ -13,12 +13,19 @@ export function applyTheme(theme: Theme, remember: boolean) {
   }
 }
 
+let launchFrame = 0
+
 export function finishLaunch(immediate = false) {
   const root = document.documentElement
   if (!root.dataset.launch) return
-  if (immediate) { root.dataset.launch = 'dismissed'; return }
+  if (immediate) { cancelAnimationFrame(launchFrame); root.dataset.launch = 'dismissed'; return }
   if (root.dataset.launch !== 'pending') return
-  const started = performance.getEntriesByName('aeha-launch-start')[0]?.startTime ?? performance.now()
-  // If the delayed logo never appeared, skip even the exit fade.
-  root.dataset.launch = performance.now() - started < 100 ? 'dismissed' : 'ready'
+  // Paint the logo even on a cached launch. The app is already rendered and
+  // interactive underneath; neither data reads nor a minimum timer gates entry.
+  root.dataset.launch = 'revealing'
+  launchFrame = requestAnimationFrame(() => {
+    launchFrame = requestAnimationFrame(() => {
+      if (root.dataset.launch === 'revealing') root.dataset.launch = 'ready'
+    })
+  })
 }

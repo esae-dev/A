@@ -6,6 +6,9 @@ export const supportedLanguages = [
 
 export const themes = ['light', 'dark'] as const
 
+/** Display order only; stored weekdays keep JavaScript's Sunday = 0 numbering. */
+export const weekdayDisplayOrder = [1, 2, 3, 4, 5, 6, 0] as const
+
 export const routinePalette = [
   { name: 'Soft Blue', value: '#6B94E8' },
   { name: 'Fresh Mint', value: '#61BEA7' },

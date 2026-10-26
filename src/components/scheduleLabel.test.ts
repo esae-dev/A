@@ -4,10 +4,10 @@ import { scheduleLabel } from './scheduleLabel'
 
 const routine: Routine = { id: 'old', name: 'Read', memo: '', category: 'learning', color: '#8b63c7', createdAt: '', updatedAt: '', createdDate: '2026-10-19', scheduleHistory: [{ effectiveFrom: '2026-10-19', days: [5, 2, 0] }] }
 describe('home schedule labels', () => {
-  it.each([['ko', '일,화,금'], ['en', 'Sun,Tue,Fri']] as const)('sorts days Sunday-first with no spaces in %s', (language, expected) => {
+  it.each([['ko', '화,금,일'], ['en', 'Tue,Fri,Sun']] as const)('sorts days Monday-first with no spaces in %s', (language, expected) => {
     expect(scheduleLabel(routine, '2026-10-25', language)).toEqual({ due: true, daysLabel: expected, full: expected })
   })
-  it.each([['ko', '오늘은 쉬는 날 (일,화,금)'], ['en', 'Rest day (Sun,Tue,Fri)']] as const)('includes real days on a rest day in %s', (language, expected) => {
+  it.each([['ko', '오늘은 쉬는 날 (화,금,일)'], ['en', 'Rest day (Tue,Fri,Sun)']] as const)('includes real days on a rest day in %s', (language, expected) => {
     expect(scheduleLabel(routine, '2026-10-26', language).full).toBe(expected)
     expect(scheduleLabel(routine, '2026-10-26', language).due).toBe(false)
   })
