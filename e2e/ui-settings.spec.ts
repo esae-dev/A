@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { contrastRatio } from './contrast'
 
 test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Seoul' })
 
@@ -32,7 +33,7 @@ async function readData(page: Page) {
 for (const theme of ['light', 'dark'] as const) {
   test(`legacy system preference resolves once to ${theme} and preserves records`, async ({ page }) => {
     await page.goto('./')
-    await addRoutine(page, '기존 독서 기록', '퍼플')
+    await addRoutine(page, '기존 독서 기록', 'Lilac')
     await page.getByRole('button', { name: '기존 독서 기록 완료하기' }).click()
     await expect(page.getByRole('button', { name: '기존 독서 기록 완료 취소' })).toBeVisible()
     const before = await readData(page)
@@ -66,14 +67,14 @@ for (const theme of ['light', 'dark'] as const) {
     await page.clock.setFixedTime(new Date('2026-10-25T12:00:00+09:00'))
     await page.goto('./')
     const routines = [
-      { name: '독서', choice: '블루', rgb: 'rgb(139, 99, 199)' },
-      { name: '운동', choice: '그린', rgb: 'rgb(37, 134, 107)' },
-      { name: '영어', choice: '오렌지', rgb: 'rgb(199, 118, 52)' },
+      { name: '독서', choice: 'Soft Blue', rgb: 'rgb(162, 139, 229)' },
+      { name: '운동', choice: 'Fresh Mint', rgb: 'rgb(97, 190, 167)' },
+      { name: '영어', choice: 'Soft Coral', rgb: 'rgb(233, 157, 131)' },
     ]
     for (const routine of routines) {
       await addRoutine(page, routine.name, routine.choice)
       await page.getByRole('button', { name: `${routine.name} 완료하기`, exact: true }).click()
-      await expect(page.getByRole('button', { name: `${routine.name} 완료 취소`, exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: `${routine.name} 완료 취소`, exact: true })).toBeEnabled()
     }
     await page.clock.setFixedTime(new Date('2026-10-26T12:00:00+09:00'))
     await page.evaluate(() => window.dispatchEvent(new Event('focus')))
@@ -83,7 +84,7 @@ for (const theme of ['light', 'dark'] as const) {
     }
     const before = await readData(page)
     await page.getByRole('button', { name: '독서 수정', exact: true }).click()
-    await page.getByRole('button', { name: '퍼플', exact: true }).click()
+    await page.getByRole('button', { name: 'Lilac', exact: true }).click()
     await page.getByRole('button', { name: '변경 저장', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect((await readData(page)).completions).toEqual(before.completions)
@@ -114,7 +115,7 @@ for (const theme of ['light', 'dark'] as const) {
       const card = page.locator('.streak-card').filter({ has: page.getByRole('heading', { name: routine.name, exact: true }) })
       await expect(card.locator('.heatmap-grid .completed')).toHaveCount(2)
       await expect(card.locator('.heatmap-grid .completed').first()).toHaveCSS('background-color', routine.rgb)
-      await expect(card.locator('.streak-value.current')).toHaveCSS('color', routine.rgb)
+      expect(await contrastRatio(card.locator('.streak-value.current'), 'card')).toBeGreaterThanOrEqual(3)
       await expect(card.locator('.routine-color-dot')).toHaveCSS('background-color', routine.rgb)
       await expect(card.locator('.streak-value.current')).toHaveText('2회')
       const colors = await card.locator('.heatmap-legend .heatmap-cell').evaluateAll(elements => elements.map(element => getComputedStyle(element).backgroundColor))

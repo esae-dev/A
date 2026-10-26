@@ -2,9 +2,10 @@ import { expect, test, type Page } from '@playwright/test'
 
 test.use({ viewport: { width: 390, height: 844 }, timezoneId: 'Asia/Seoul' })
 
-async function add(page: Page, name: string) {
+async function add(page: Page, name: string, memo = '') {
   await page.getByRole('button', { name: '루틴 추가', exact: true }).first().click()
   await page.getByLabel('습관 이름').fill(name)
+  if (memo) await page.getByLabel('메모').fill(memo)
   await page.getByRole('button', { name: '만들기', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
@@ -52,10 +53,16 @@ async function recording(page: Page) {
   return page.evaluate(() => (window as unknown as { motionResult: Promise<{ frames: { time: number; positions: Record<string, number>; connected: boolean; visible: boolean; checked: boolean }[]; transitions: number[]; click: number }> }).motionResult)
 }
 
-test('check and undo animate all existing cards both ways for 300ms without remount/flicker', async ({ page }) => {
+for (const withMemo of [false, true]) test(`check and undo animate all existing cards both ways for 300ms without remount/flicker${withMemo ? ' with different card heights and repeated checks' : ''}`, async ({ page }) => {
   await page.goto('./')
-  for (const name of ['A', 'B', 'C']) await add(page, name)
-  for (const action of ['complete', 'undo']) {
+  for (const name of ['A', 'B', 'C']) await add(page, name, withMemo ? name === 'A' ? '길게 적은 메모로 카드 높이가 달라집니다.\n다음 줄의 메모도 보존합니다.' : name === 'C' ? '짧은 메모' : '' : '')
+  if (withMemo) {
+    await page.getByRole('button', { name: 'A 완료하기', exact: true }).tap()
+    await expect(page.getByRole('button', { name: 'A 완료 취소', exact: true })).toBeEnabled()
+    await page.reload()
+    await expect(page.locator('.routine-name')).toHaveText(['B', 'C', 'A'])
+  }
+  for (const action of withMemo ? ['undo', 'complete', 'undo', 'complete'] : ['complete', 'undo']) {
     await startRecording(page)
     await page.getByRole('button', { name: action === 'complete' ? 'A 완료하기' : 'A 완료 취소', exact: true }).tap()
     const result = await recording(page)

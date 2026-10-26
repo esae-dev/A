@@ -16,6 +16,7 @@
   --primary: #304565;
   --primary-hover: #253a59;
   --primary-soft: #edf0f4;
+  --on-primary: #fff;
   --danger: #b94444;
   --missed: #cdd4dd;
   --off: #e0e3e6;
@@ -39,6 +40,7 @@ html[data-theme="dark"] {
   --primary: #a7b8d3;
   --primary-hover: #bac9df;
   --primary-soft: #2a384c;
+  --on-primary: #131b2b;
   --danger: #f09494;
   --missed: #526176;
   --off: #2c3747;
@@ -88,20 +90,23 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .drag-handle:disabled { opacity: .5; cursor: default; }
 .drag-handle:hover { background: var(--surface-soft); }
 .routine-card.is-dragging { z-index: 30; border-color: var(--primary); }
-.routine-card { min-width: 0; position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 12px 16px 16px; min-height: 86px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); transition: border-color .2s, background .2s; }
+.routine-card { min-width: 0; position: relative; display: grid; grid-template-columns: 26px 2px minmax(0, 1fr) auto; align-items: center; column-gap: 12px; row-gap: 10px; padding: 16px 12px 16px 16px; min-height: 86px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); transition: border-color .2s, background .2s; }
+.routine-card .drag-handle { grid-column: 1; grid-row: 1; }
+.routine-card .routine-accent { grid-column: 2; grid-row: 1; }
+.routine-card .routine-content { grid-column: 3; grid-row: 1; }
+.routine-card .routine-actions { grid-column: 4; grid-row: 1; }
 .routine-accent { align-self: stretch; flex-shrink: 0; width: 2px; min-height: 30px; border-radius: 2px; background: var(--routine-color, var(--primary)); }
 .routine-content { min-width: 0; flex: 1; }
 .routine-name { font-size: 15px; font-weight: 600; letter-spacing: -.2px; line-height: 1.5; overflow-wrap: anywhere; margin: 0 0 5px; }
 .routine-meta { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 0; }
-.routine-meta > span { color: var(--faint); padding: 0 3px; }
-.routine-memo { font-size: 12px; line-height: 1.65; color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; margin: 6px 0 0; }
+.routine-memo { grid-column: 3 / -1; grid-row: 2; min-width: 0; padding: 9px 11px; border-top: 1px solid var(--border); border-radius: 6px; background: var(--surface-soft); font-size: 12px; line-height: 1.75; color: var(--muted); overflow-wrap: anywhere; white-space: pre-wrap; margin: 0; }
 .routine-actions { display: flex; align-items: center; gap: 3px; flex-shrink: 0; }
 .check-button { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: transparent; color: var(--primary); position: relative; }
 .check-button::before { position: absolute; content: ''; width: 26px; height: 26px; border: 1.25px solid var(--control-border); border-radius: 50%; }
 .check-button svg { position: relative; z-index: 1; width: 15px; height: 15px; }
 .check-button[aria-pressed="true"]::before, .is-done .check-button::before { background: var(--routine-color, var(--primary)); border-color: var(--routine-color, var(--primary)); animation: check-pop .2s ease; }
 .check-button > span { position: relative; z-index: 1; color: var(--muted); line-height: 1; }
-.check-button[aria-pressed="true"], .is-done .check-button { color: #fff; }
+.check-button[aria-pressed="true"], .is-done .check-button { color: var(--routine-ink, #fff); }
 .edit-button, .icon-button { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; background: transparent; color: var(--muted); flex-shrink: 0; }
 .edit-button { width: 44px; min-height: 44px; }
 .edit-button:hover, .icon-button:hover { background: var(--surface-soft); }
@@ -149,7 +154,7 @@ html[data-theme="dark"] .fab { color: #131b2b; }
 .streak-stats > div + div { padding-left: 23px; border-left: 1px solid var(--border); }
 .streak-stat-label { font-size: 12px; color: var(--muted); }
 .streak-value { font-size: 30px; line-height: 1.2; letter-spacing: -.8px; font-weight: 500; margin: 8px 0 0; font-variant-numeric: tabular-nums; }
-.streak-value.current { color: var(--routine-color); }
+.streak-value.current { color: color-mix(in srgb, var(--routine-color) 70%, var(--text)); }
 .streak-value span { font-size: 13px; font-weight: 450; margin-left: 5px; color: var(--muted); letter-spacing: 0; }
 /* One pitch controls the month columns, week columns and weekday rows. */
 .heatmap-caption { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
@@ -193,12 +198,14 @@ fieldset { min-width: 0; }
 .palette-field legend, .repeat-field legend { margin-bottom: 11px; padding: 0; }
 .color-palette { display: flex; justify-content: space-between; gap: 4px; flex-wrap: nowrap; }
 .color-option { width: 44px; height: 44px; border-radius: 50%; border: 2px solid transparent; background: transparent; padding: 4px; display: grid; place-items: center; }
-.color-option.selected { border-color: currentColor; }
+.color-option.selected { border-color: var(--primary); }
 .color-option > span { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
 .repeat-control { margin-bottom: 3px; }
-.weekday-picker { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 12px; }
-.weekday-picker button { min-height: 44px; padding: 5px 0; border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 12px; font-weight: 550; }
-.weekday-picker button.selected { background: var(--primary-soft); color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+.repeat-control button { border: 1px solid transparent; }
+.repeat-control button.selected { background: var(--primary); color: var(--on-primary); border-color: var(--primary); box-shadow: none; }
+.weekday-picker { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 12px; }
+.weekday-picker button { min-width: 0; min-height: 46px; padding: 5px 0; border: 1px solid var(--control-border); border-radius: 8px; background: var(--surface-soft); color: var(--muted); font-size: 12px; font-weight: 550; }
+.weekday-picker button.selected { background: var(--primary); color: var(--on-primary); border-color: var(--primary); font-weight: 600; }
 .schedule-note { margin: 12px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
 .editor-submit { width: 100%; margin-top: 22px; }
 .form-error { font-size: 13px; color: var(--danger); line-height: 1.6; margin: 16px 0 -10px; }

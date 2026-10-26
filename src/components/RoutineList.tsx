@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { flushSync } from 'react-dom'
 import { closestCenter, DndContext, KeyboardSensor, MeasuringStrategy, PointerSensor, useDndContext, useSensor, useSensors, type Announcements, type CollisionDetection, type DragEndEvent } from '@dnd-kit/core'
 import { defaultAnimateLayoutChanges, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { completionIds, homeGroup, orderForHome } from '../domain/ordering'
 import { isScheduled } from '../domain/routines'
 import type { Completion, Language, Routine } from '../domain/types'
-import { categories, messages, weekdays } from '../i18n'
+import { messages, weekdays } from '../i18n'
 import { Icon } from './Icon'
 import { useReducedMotion } from './useReducedMotion'
+import { contrastInk } from './colorContrast'
 
 interface Props {
   routines: Routine[]
@@ -99,7 +101,8 @@ function RefreshLayoutMeasurements({ items }: { items: string[] }) {
 
 function SortableRoutineCard({ routine, language, today, busy, done, interactionDisabled, animateChecks, onToggle, onEdit }: Props & { routine: Routine; done: boolean; interactionDisabled: boolean; animateChecks: boolean }) {
   const reducedMotion = useReducedMotion()
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+  const { measureDroppableContainers } = useDndContext()
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, items } = useSortable({
     id: routine.id,
     disabled: { draggable: busy, droppable: false },
     transition: reducedMotion ? null : animateChecks ? { duration: 300, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' } : undefined,
@@ -108,7 +111,16 @@ function SortableRoutineCard({ routine, language, today, busy, done, interaction
   const t = messages[language]
   const isDue = isScheduled(routine, today)
   const schedule = routine.scheduleHistory.filter(s => s.effectiveFrom <= today).at(-1)
-  const style = { '--routine-color': routine.color, transform: CSS.Transform.toString(transform ? { ...transform, scaleX: 1, scaleY: 1 } : null), transition } as CSSProperties
+  // Sortable's drag-index gate can cancel an idle FLIP when a saved snapshot
+  // replaces the item array. Only its inverted setup frame needs zero duration.
+  const checkTransition = transform ? 'transform 0ms linear' : 'transform 300ms cubic-bezier(0.22, 1, 0.36, 1)'
+  const style = { '--routine-color': routine.color, '--routine-ink': contrastInk(routine.color), transform: CSS.Transform.toString(transform ? { ...transform, scaleX: 1, scaleY: 1 } : null), transition: reducedMotion ? undefined : animateChecks ? checkTransition : transition } as CSSProperties
+  function toggle() {
+    // Capture this layout before regrouping. Measurements from a previous FLIP
+    // can otherwise miss the next move, especially with different card heights.
+    flushSync(() => measureDroppableContainers(items))
+    void onToggle(routine)
+  }
   return <article ref={setNodeRef} className={`routine-card${done ? ' is-done' : ''}${!isDue ? ' is-off' : ''}${isDragging ? ' is-dragging' : ''}`} style={style}>
     <button className="drag-handle" ref={setActivatorNodeRef} {...attributes} {...listeners}
       aria-label={`${routine.name} ${t.reorder}`} aria-roledescription={t.sortable} disabled={busy}>
@@ -119,11 +131,11 @@ function SortableRoutineCard({ routine, language, today, busy, done, interaction
     <span className="routine-accent" aria-hidden="true" />
     <div className="routine-content">
       <h2 className="routine-name">{routine.name}</h2>
-      <p className="routine-meta">{categories[language][routine.category]}<span aria-hidden="true"> · </span>{isDue ? schedule?.days.length === 7 ? t.daily : schedule?.days.map(d => weekdays[language][d]).join(' · ') : t.off}</p>
-      {routine.memo && <p className="routine-memo">{routine.memo}</p>}
+      <p className="routine-meta">{isDue ? schedule?.days.length === 7 ? t.daily : schedule?.days.map(d => weekdays[language][d]).join(' · ') : t.off}</p>
     </div>
+    {routine.memo && <p className="routine-memo">{routine.memo}</p>}
     <div className="routine-actions">
-      <button className="check-button" disabled={!isDue || interactionDisabled} aria-pressed={done} aria-label={`${routine.name} ${!isDue ? t.off : done ? t.undo : t.todo}`} onClick={() => void onToggle(routine)}>
+      <button className="check-button" disabled={!isDue || interactionDisabled} aria-pressed={done} aria-label={`${routine.name} ${!isDue ? t.off : done ? t.undo : t.todo}`} onClick={toggle}>
         {done ? <Icon name="check" size={22} /> : !isDue ? <span aria-hidden="true">−</span> : null}
       </button>
       <button className="edit-button" disabled={interactionDisabled} aria-label={`${routine.name} ${t.edit}`} onClick={() => onEdit(routine)}><Icon name="more" size={20} /></button>

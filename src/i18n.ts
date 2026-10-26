@@ -1,4 +1,4 @@
-import type { Language, Category } from './domain/types'
+import type { Language } from './domain/types'
 
 export const messages = {
   ko: {
@@ -42,11 +42,6 @@ export const messages = {
     storageReloadBody: 'Your records are preserved. Reload this window to continue with the latest version.', reload: 'Reload',
   },
 } satisfies Record<Language, Record<string, string>>
-
-export const categories: Record<Language, Record<Category, string>> = {
-  ko: { other: '기타', health: '건강', learning: '배움', mind: '마음', life: '생활' },
-  en: { other: 'Other', health: 'Health', learning: 'Learning', mind: 'Mind', life: 'Life' },
-}
 
 export const weekdays: Record<Language, string[]> = {
   ko: ['일', '월', '화', '수', '목', '금', '토'],
