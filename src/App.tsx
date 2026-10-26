@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { repository } from './data/repository'
 import { localDateKey } from './domain/dates'
 import { isScheduled } from './domain/routines'
 import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
 import { supportedLanguages, themes } from './config'
-import { categories, messages, weekdays } from './i18n'
+import { messages } from './i18n'
 import { Icon } from './components/Icon'
 import { RoutineEditor } from './components/RoutineEditor'
 import { StreakCard } from './components/StreakCard'
 import { BrandLogo } from './components/BrandLogo'
+import { RoutineList } from './components/RoutineList'
 
 type Page = 'home' | 'streak' | 'settings'
 type Snapshot = { routines: Routine[]; completions: Completion[]; preferences: Preferences }
@@ -135,28 +136,9 @@ export default function App() {
             <div className="empty-symbol"><Icon name="check" size={28} /></div>
             <h2>{t.emptyTitle}</h2>
             <button className="primary-button" onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
-          </div> : <div className="routine-list">
-            {routines.map(routine => {
-              const isDue = isScheduled(routine, today)
-              const done = completedToday.has(routine.id) && isDue
-              const schedule = routine.scheduleHistory.filter(s => s.effectiveFrom <= today).at(-1)
-              return <article className={`routine-card${done ? ' is-done' : ''}${!isDue ? ' is-off' : ''}`} key={routine.id} style={{ '--routine-color': routine.color } as CSSProperties}>
-                <span className="routine-accent" aria-hidden="true" />
-                <div className="routine-content">
-                  <h2 className="routine-name">{routine.name}</h2>
-                  <p className="routine-meta">{categories[language][routine.category]}<span aria-hidden="true"> · </span>{isDue ? schedule?.days.length === 7 ? t.daily : schedule?.days.map(d => weekdays[language][d]).join(' · ') : t.off}</p>
-                  {routine.memo && <p className="routine-memo">{routine.memo}</p>}
-                </div>
-                <div className="routine-actions">
-                  <button className="check-button" disabled={!isDue || busy} aria-pressed={done} aria-label={`${routine.name} ${!isDue ? t.off : done ? t.undo : t.todo}`}
-                    onClick={() => toggleRoutine(routine)}>
-                    {done ? <Icon name="check" size={22} /> : !isDue ? <span aria-hidden="true">−</span> : null}
-                  </button>
-                  <button className="edit-button" disabled={busy} aria-label={`${routine.name} ${t.edit}`} onClick={() => setEditor(routine)}><Icon name="more" size={20} /></button>
-                </div>
-              </article>
-            })}
-          </div>}
+          </div> : <RoutineList key={today} routines={routines} completions={completions} today={today} language={language}
+            busy={busy} onToggle={toggleRoutine} onEdit={setEditor}
+            onMove={(activeId, overId) => mutate(() => repository.moveRoutine(activeId, overId))} />}
           <button className="fab" aria-label={t.add} disabled={busy} onClick={() => setEditor('new')}><Icon name="plus" size={26} /></button>
         </>}
 

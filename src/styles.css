@@ -83,6 +83,11 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .summary-track { height: 3px; border-radius: 6px; background: var(--surface-soft); overflow: hidden; }
 .summary-fill { height: 100%; background: var(--primary); border-radius: inherit; transition: width .22s ease; }
 .routine-list, .streak-list { display: grid; gap: 10px; }
+.drag-handle { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; margin-left: -10px; margin-right: -8px; padding: 10px; border-radius: 8px; background: transparent; color: var(--muted); touch-action: none; cursor: grab; }
+.drag-handle:active { cursor: grabbing; }
+.drag-handle:disabled { opacity: .5; cursor: default; }
+.drag-handle:hover { background: var(--surface-soft); }
+.routine-card.is-dragging { z-index: 30; border-color: var(--primary); }
 .routine-card { min-width: 0; position: relative; display: flex; align-items: center; gap: 12px; padding: 16px 12px 16px 16px; min-height: 86px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); transition: border-color .2s, background .2s; }
 .routine-accent { align-self: stretch; flex-shrink: 0; width: 2px; min-height: 30px; border-radius: 2px; background: var(--routine-color, var(--primary)); }
 .routine-content { min-width: 0; flex: 1; }

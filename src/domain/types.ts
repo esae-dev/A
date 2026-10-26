@@ -27,6 +27,8 @@ export interface Routine {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  /** Persisted manual order; optional for backwards-compatible legacy records. */
+  sortOrder?: number;
 }
 
 export interface Completion {

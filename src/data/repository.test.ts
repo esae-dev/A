@@ -4,6 +4,7 @@ import { HabitDatabase } from './db';
 import { createRepository, type HabitRepository } from './repository';
 import type { Preferences, RoutineInput } from '../domain/types';
 import { calculateStreak } from '../domain/streak';
+import { compareManualOrder, completionIds, orderForHome } from '../domain/ordering';
 
 const input: RoutineInput = {
   name: '  Read  ',
@@ -174,5 +175,69 @@ describe('IndexedDB repository', () => {
     expect(updated.scheduleHistory).toEqual(routine.scheduleHistory);
     expect(await database.completions.toArray()).toEqual(records);
     expect(calculateStreak(updated, records, '2026-10-26')).toEqual(calculateStreak(routine, records, '2026-10-26'));
+  });
+
+  it('persists manual order across reopen and completion/undo never overwrites it', async () => {
+    const a = await repository.createRoutine({ ...input, name: 'A' });
+    const b = await repository.createRoutine({ ...input, name: 'B' });
+    const c = await repository.createRoutine({ ...input, name: 'C' });
+    expect(await repository.moveRoutine(c.id, a.id)).toBe(true);
+    const beforeCheck = (await database.routines.toArray()).sort(compareManualOrder);
+    expect(beforeCheck.map(r => r.id)).toEqual([c.id, a.id, b.id]);
+    await repository.setCompletion(c.id, '2026-10-26', true);
+    const snapshot = await repository.getSnapshot();
+    expect(orderForHome(snapshot.routines, completionIds(snapshot.completions, '2026-10-26'), '2026-10-26').map(r => r.id)).toEqual([a.id, b.id, c.id]);
+    expect((await database.routines.toArray()).sort(compareManualOrder)).toEqual(beforeCheck);
+    await repository.setCompletion(c.id, '2026-10-26', false);
+    database.close();
+    database = new HabitDatabase(database.name);
+    repository = createRepository(database, () => clock);
+    const reopened = await repository.getSnapshot();
+    expect(orderForHome(reopened.routines, completionIds(reopened.completions, '2026-10-26'), '2026-10-26').map(r => r.id)).toEqual([c.id, a.id, b.id]);
+    expect(reopened.completions).toHaveLength(1);
+    expect(reopened.completions[0].completed).toBe(false);
+  });
+
+  it('reorders matching slots without changing completion records, schedules or tombstones', async () => {
+    const a = await repository.createRoutine({ ...input, name: 'A' });
+    const b = await repository.createRoutine({ ...input, name: 'B' });
+    const c = await repository.createRoutine({ ...input, name: 'C' });
+    const gone = await repository.createRoutine({ ...input, name: 'Gone' });
+    await repository.setCompletion(a.id, '2026-10-26', true);
+    await repository.setCompletion(gone.id, '2026-10-26', false);
+    await repository.deleteRoutine(gone.id);
+    const tombstone = await database.routines.get(gone.id);
+    const records = await database.completions.toArray();
+    clock = new Date(2026, 9, 26, 11);
+    await repository.moveRoutine(c.id, b.id);
+    expect((await database.routines.toArray()).filter(r => !r.deletedAt).sort(compareManualOrder).map(r => r.id)).toEqual([a.id, c.id, b.id]);
+    expect(await database.completions.toArray()).toEqual(records);
+    expect(await database.routines.get(gone.id)).toEqual(tombstone);
+    expect((await database.routines.get(c.id))?.scheduleHistory).toEqual(c.scheduleHistory);
+    expect((await database.routines.get(c.id))?.createdAt).toBe(c.createdAt);
+  });
+
+  it('rejects missing/deleted IDs and ignores cross-group or stale drops', async () => {
+    const a = await repository.createRoutine(input);
+    const b = await repository.createRoutine(input);
+    const off = await repository.createRoutine({ ...input, days: [0, 6] });
+    const initial = await database.routines.toArray();
+    expect(await repository.moveRoutine(a.id, off.id)).toBe(false);
+    expect(await database.routines.toArray()).toEqual(initial);
+    await repository.setCompletion(a.id, '2026-10-26', true);
+    expect(await repository.moveRoutine(a.id, b.id)).toBe(false);
+    await expect(repository.moveRoutine('missing', b.id)).rejects.toThrow('routine-not-found');
+    await repository.deleteRoutine(b.id);
+    await expect(repository.moveRoutine(a.id, b.id)).rejects.toThrow('routine-not-found');
+  });
+
+  it('serializes concurrent creations/moves without dropping new routines or duplicating positions', async () => {
+    const [a, b, c] = await Promise.all([repository.createRoutine(input), repository.createRoutine(input), repository.createRoutine(input)]);
+    expect(new Set((await database.routines.toArray()).map(r => r.sortOrder)).size).toBe(3);
+    await Promise.all([repository.moveRoutine(c.id, a.id), repository.createRoutine(input), repository.moveRoutine(b.id, a.id)]);
+    const routines = await database.routines.toArray();
+    expect(routines).toHaveLength(4);
+    expect(new Set(routines.map(r => r.sortOrder)).size).toBe(4);
+    expect(routines.map(r => r.id)).toEqual(expect.arrayContaining([a.id, b.id, c.id]));
   });
 });

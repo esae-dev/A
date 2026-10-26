@@ -3,6 +3,7 @@ import { addDays, isDateKey, localDateKey } from '../domain/dates';
 import { isScheduled, normalizeRoutineInput, updateSchedule } from '../domain/routines';
 import type { Completion, DateKey, Preferences, Routine, RoutineInput, Theme } from '../domain/types';
 import { supportedLanguages, themes } from '../config';
+import { compareLegacyOrder, compareManualOrder, completionIds, moveWithinHomeGroup } from '../domain/ordering';
 
 export interface HabitSnapshot {
   routines: Routine[];
@@ -41,7 +42,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         ]);
         const routines = allRoutines
           .filter((routine) => !routine.deletedAt)
-          .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+          .sort(compareLegacyOrder);
         const activeIds = new Set(routines.map((routine) => routine.id));
         const theme = savedPreferences?.theme === 'system' ? deviceTheme() : savedPreferences?.theme;
         if (savedPreferences?.theme === 'system') {
@@ -75,8 +76,12 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         createdAt: timestamp,
         updatedAt: timestamp,
       };
-      await database.routines.add(routine);
-      return routine;
+      return database.transaction('rw', database.routines, async () => {
+        const last = await database.routines.orderBy('sortOrder').last();
+        routine.sortOrder = (last?.sortOrder ?? -1) + 1;
+        await database.routines.add(routine);
+        return routine;
+      });
     },
 
     async updateRoutine(id: string, input: RoutineInput): Promise<Routine> {
@@ -148,6 +153,23 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         throw new RepositoryError('invalid-preferences');
       }
       await database.preferences.put({ id: 'app', language: preferences.language, theme: preferences.theme });
+    },
+
+    async moveRoutine(activeId: string, overId: string): Promise<boolean> {
+      return database.transaction('rw', database.routines, database.completions, async () => {
+        // Re-read data inside the transaction, so stale tabs cannot drop new routines
+        // or overwrite completion/schedule changes made while a drag was in progress.
+        const routines = (await database.routines.toArray()).filter(r => !r.deletedAt).sort(compareManualOrder);
+        if (!routines.some(r => r.id === activeId) || !routines.some(r => r.id === overId)) throw new RepositoryError('routine-not-found');
+        const today = localDateKey(now());
+        const records = await database.completions.where('date').equals(today).toArray();
+        const moved = moveWithinHomeGroup(routines, activeId, overId, completionIds(records, today), today);
+        if (moved.every((r, index) => r.id === routines[index].id)) return false;
+        const timestamp = now().toISOString();
+        const changed = moved.flatMap((r, index) => r.sortOrder === index ? [] : [{ ...r, sortOrder: index, updatedAt: timestamp }]);
+        await database.routines.bulkPut(changed);
+        return true;
+      });
     },
   };
 }
