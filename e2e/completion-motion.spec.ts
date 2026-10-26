@@ -10,18 +10,20 @@ async function add(page: Page, name: string) {
 }
 
 async function startRecording(page: Page) {
+  await page.bringToFront()
   await page.evaluate(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>('.routine-card'))
-    const started = performance.now()
     const frames: { time: number; positions: Record<string, number>; connected: boolean; visible: boolean; checked: boolean }[] = []
     const transitions: number[] = []
     const globals = window as unknown as { motionResult: Promise<{ frames: typeof frames; transitions: number[]; click: number }> }
-    let clicked = started
+    let clicked: number | null = null
+    let framesAfterClick = 0
     document.addEventListener('click', () => { clicked = performance.now() }, { once: true, capture: true })
     globals.motionResult = new Promise(resolve => {
       const sample = () => {
         const positions: Record<string, number> = {}
         let connected = true, visible = true
+        let moving = false
         for (const card of cards) {
           const rect = card.getBoundingClientRect()
           positions[card.querySelector('.routine-name')!.textContent!] = rect.y
@@ -30,11 +32,15 @@ async function startRecording(page: Page) {
           for (const animation of card.getAnimations()) {
             if (animation.effect instanceof KeyframeEffect && animation.effect.getKeyframes().some(frame => frame.transform !== undefined)) {
               transitions.push(Number(animation.effect.getTiming().duration))
+              moving ||= animation.playState === 'running' || animation.pending
             }
           }
         }
         frames.push({ time: performance.now(), positions, connected, visible, checked: cards.find(card => card.querySelector('.routine-name')!.textContent === 'A')!.querySelector('.check-button')!.getAttribute('aria-pressed') === 'true' })
-        if (performance.now() - started < 850) requestAnimationFrame(sample)
+        if (clicked !== null) framesAfterClick++
+        // Wall-clock time can pass while a busy Chromium compositor is paused.
+        // Observe painted frames and the actual animation ending before undoing.
+        if (clicked === null || framesAfterClick < 30 || moving) requestAnimationFrame(sample)
         else resolve({ frames, transitions, click: clicked })
       }
       sample()

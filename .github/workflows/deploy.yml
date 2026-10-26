@@ -26,7 +26,15 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
-      - run: npx playwright install --with-deps chromium
+      - name: Prepare Chromium
+        run: |
+          browser_path="$(command -v google-chrome || command -v chromium || true)"
+          if [ -n "$browser_path" ]; then
+            "$browser_path" --version
+            printf 'PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=%s\n' "$browser_path" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps --only-shell chromium
+          fi
         timeout-minutes: 5
       - run: npm run test:e2e -- --reporter=list,github
       - uses: actions/upload-pages-artifact@v3
