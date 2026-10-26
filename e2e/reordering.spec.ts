@@ -149,6 +149,8 @@ test('supports real touch drag, keyboard reorder/cancel and separate check/edit 
   await expect.poll(() => names(page)).toEqual(['C', 'A', 'B'])
   await settleRoutineLayout(page)
   const manual = (await data(page)).routines
+  // Flush a presented compositor frame before the next native touch gesture.
+  await page.screenshot({ path: 'test-results/aeha-touch-order-before-check.png', animations: 'allow' })
   await page.getByRole('button', { name: 'C 완료하기', exact: true }).tap()
   await expect.poll(() => names(page)).toEqual(['A', 'B', 'C'])
   await page.getByRole('button', { name: 'C 완료 취소', exact: true }).tap()
