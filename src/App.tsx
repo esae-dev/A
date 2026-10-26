@@ -1,0 +1,195 @@
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
+import { repository } from './data/repository'
+import { localDateKey } from './domain/dates'
+import { isScheduled } from './domain/routines'
+import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
+import { supportedLanguages, themes } from './config'
+import { categories, messages, weekdays } from './i18n'
+import { Icon } from './components/Icon'
+import { RoutineEditor } from './components/RoutineEditor'
+import { StreakCard } from './components/StreakCard'
+import { BrandLogo } from './components/BrandLogo'
+
+type Page = 'home' | 'streak' | 'settings'
+type Snapshot = { routines: Routine[]; completions: Completion[]; preferences: Preferences }
+
+export default function App() {
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null)
+  const [page, setPage] = useState<Page>('home')
+  const [today, setToday] = useState(localDateKey)
+  const [error, setError] = useState(false)
+  const [editor, setEditor] = useState<Routine | 'new' | null>(null)
+  const [busy, setBusy] = useState(false)
+  const mutationPending = useRef(false)
+  const preferences = snapshot?.preferences ?? { language: 'ko', theme: 'light' }
+  const language = preferences.language
+  const t = messages[language]
+
+  const refresh = useCallback(async () => {
+    try {
+      setSnapshot(await repository.getSnapshot())
+      setError(false)
+    } catch { setError(true) }
+  }, [])
+
+  useEffect(() => {
+    void refresh()
+    const onFocus = () => { setToday(localDateKey()); void refresh() }
+    const onVisibility = () => { if (!document.hidden) onFocus() }
+    const timer = window.setInterval(() => setToday(localDateKey()), 15_000)
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      clearInterval(timer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
+  }, [refresh])
+
+  useEffect(() => {
+    document.documentElement.lang = language
+    document.title = `${page === 'home' ? t.todayTitle : t[page]} · AEHA`
+  }, [language, page, t])
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = preferences.theme
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', preferences.theme === 'dark' ? '#182336' : '#304565')
+  }, [preferences.theme])
+
+  async function mutate(action: () => Promise<unknown>, closeEditor = false) {
+    if (mutationPending.current) return
+    mutationPending.current = true
+    setBusy(true)
+    try {
+      await action()
+      setSnapshot(await repository.getSnapshot())
+      setToday(localDateKey())
+      setError(false)
+      if (closeEditor) setEditor(null)
+    } catch (cause) {
+      setError(true)
+      throw cause
+    } finally {
+      mutationPending.current = false
+      setBusy(false)
+    }
+  }
+
+  async function saveRoutine(input: RoutineInput) {
+    await mutate(() => editor && editor !== 'new'
+      ? repository.updateRoutine(editor.id, input)
+      : repository.createRoutine(input), true)
+  }
+
+  const routines = snapshot?.routines ?? []
+  const completions = snapshot?.completions ?? []
+  const completedToday = new Set(completions.filter(c => c.date === today && c.completed).map(c => c.routineId))
+  const scheduled = routines.filter(r => isScheduled(r, today))
+  const doneCount = scheduled.filter(r => completedToday.has(r.id)).length
+  const dateLabel = new Intl.DateTimeFormat(supportedLanguages.find(item => item.value === language)?.locale, {
+    month: 'long', day: 'numeric', weekday: 'long',
+  }).format(new Date(`${today}T12:00:00`))
+
+  function changePreferences(next: Partial<Preferences>) {
+    void mutate(() => repository.savePreferences({ ...preferences, ...next })).catch(() => {})
+  }
+
+  function toggleRoutine(routine: Routine) {
+    // A backgrounded app or a click at midnight can precede the next clock tick.
+    const date = localDateKey()
+    setToday(date)
+    if (!isScheduled(routine, date)) return
+    const completed = completions.some(c => c.routineId === routine.id && c.date === date && c.completed)
+    void mutate(() => repository.setCompletion(routine.id, date, !completed)).catch(() => {})
+  }
+
+  return (
+    <div className="app-shell">
+      <header className="app-header">
+        <a className="brand" href="#" onClick={event => { event.preventDefault(); setPage('home') }} aria-label="AEHA">
+          <BrandLogo />
+        </a>
+      </header>
+
+      <main className={`page-main${page === 'home' ? ' page-main-home' : ''}`} id="main">
+        <div className="page-heading">
+          {page === 'home' && <p className="eyebrow">{dateLabel}</p>}
+          <h1 className="page-title">{page === 'home' ? t.todayTitle : t[page]}</h1>
+        </div>
+
+        {error && <div className="error-banner" role="alert">
+          <p>{t.error}</p><button className="secondary-button" onClick={() => void refresh()}>{t.retry}</button>
+        </div>}
+
+        {!snapshot && !error && <p className="loading-state" role="status">{t.loading}</p>}
+
+        {snapshot && page === 'home' && <>
+          {routines.length > 0 && <section className="today-summary" aria-label={t.todayDone}>
+            <div className="summary-heading"><span>{t.todayDone}</span><span className="summary-count"><strong>{doneCount}</strong><span> / {scheduled.length}</span></span></div>
+            <div className="summary-track" role="progressbar" aria-label={t.progress} aria-valuenow={doneCount} aria-valuemin={0} aria-valuemax={scheduled.length || 1}>
+              <div className="summary-fill" style={{ width: `${scheduled.length ? doneCount / scheduled.length * 100 : 0}%` }} />
+            </div>
+          </section>}
+
+          {routines.length === 0 ? <div className="empty-state">
+            <div className="empty-symbol"><Icon name="check" size={28} /></div>
+            <h2>{t.emptyTitle}</h2>
+            <button className="primary-button" onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
+          </div> : <div className="routine-list">
+            {routines.map(routine => {
+              const isDue = isScheduled(routine, today)
+              const done = completedToday.has(routine.id) && isDue
+              const schedule = routine.scheduleHistory.filter(s => s.effectiveFrom <= today).at(-1)
+              return <article className={`routine-card${done ? ' is-done' : ''}${!isDue ? ' is-off' : ''}`} key={routine.id} style={{ '--routine-color': routine.color } as CSSProperties}>
+                <span className="routine-accent" aria-hidden="true" />
+                <div className="routine-content">
+                  <h2 className="routine-name">{routine.name}</h2>
+                  <p className="routine-meta">{categories[language][routine.category]}<span aria-hidden="true"> · </span>{isDue ? schedule?.days.length === 7 ? t.daily : schedule?.days.map(d => weekdays[language][d]).join(' · ') : t.off}</p>
+                  {routine.memo && <p className="routine-memo">{routine.memo}</p>}
+                </div>
+                <div className="routine-actions">
+                  <button className="check-button" disabled={!isDue || busy} aria-pressed={done} aria-label={`${routine.name} ${!isDue ? t.off : done ? t.undo : t.todo}`}
+                    onClick={() => toggleRoutine(routine)}>
+                    {done ? <Icon name="check" size={22} /> : !isDue ? <span aria-hidden="true">−</span> : null}
+                  </button>
+                  <button className="edit-button" disabled={busy} aria-label={`${routine.name} ${t.edit}`} onClick={() => setEditor(routine)}><Icon name="more" size={20} /></button>
+                </div>
+              </article>
+            })}
+          </div>}
+          <button className="fab" aria-label={t.add} disabled={busy} onClick={() => setEditor('new')}><Icon name="plus" size={26} /></button>
+        </>}
+
+        {snapshot && page === 'streak' && (routines.length > 0
+          ? <div className="streak-list">{routines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
+          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" onClick={() => setEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
+
+        {snapshot && page === 'settings' && <>
+          <div className="settings-card">
+            <section className="setting-row">
+              <label className="setting-label" htmlFor="language-select">{t.language}</label>
+              <select className="language-select" id="language-select" value={language} disabled={busy} onChange={event => changePreferences({ language: event.target.value as Language })}>
+                {supportedLanguages.map(item => <option key={item.value} value={item.value} lang={item.value}>{item.label}</option>)}
+              </select>
+            </section>
+            <section className="setting-row">
+              <h2 className="setting-label" id="theme-label">{t.theme}</h2>
+              <div className="segmented-control" role="group" aria-labelledby="theme-label">
+                {themes.map(value => <button key={value} disabled={busy} className={preferences.theme === value ? 'selected' : ''} aria-pressed={preferences.theme === value} onClick={() => changePreferences({ theme: value })}>{t[value]}</button>)}
+              </div>
+            </section>
+          </div>
+        </>}
+      </main>
+
+      <nav className="bottom-nav" aria-label={t.navigation}>
+        {(['home', 'streak', 'settings'] as Page[]).map(value => <button className={`nav-item${page === value ? ' active' : ''}`} key={value} aria-current={page === value ? 'page' : undefined} onClick={() => { setPage(value); window.scrollTo({ top: 0 }) }}>
+          <Icon name={value} size={23} /><span>{t[value]}</span>
+        </button>)}
+      </nav>
+      {editor && <RoutineEditor routine={editor === 'new' ? undefined : editor} language={language} busy={busy}
+        onSave={saveRoutine} onClose={() => { if (!busy) setEditor(null) }}
+        onDelete={editor === 'new' ? undefined : () => mutate(() => repository.deleteRoutine(editor.id), true)} />}
+    </div>
+  )
+}

@@ -1,1 +1,158 @@
-# A
+# AEHA
+
+![AEHA](public/brand/logo-light.svg)
+
+기록과 스트릭에 집중하는 모바일 우선 습관 기록 PWA입니다. React, TypeScript, Vite, Dexie를 사용하며 서버·로그인·광고·알림 없이 브라우저 안에서 동작합니다. 외부 이미지나 웹폰트를 요청하지 않습니다.
+
+## 화면과 동작
+
+- **오늘의 루틴**: 루틴 생성·수정·삭제, 오늘 체크와 완료 취소. 이름, 메모, 카테고리, 색상, 매일 또는 선택 요일을 설정합니다. 오늘 대상이 아닌 루틴은 체크할 수 없습니다.
+- **스트릭**: 루틴별 현재·최장 연속 기록과 최근 26주의 날짜별 잔디를 표시합니다. 완료·미완료·비대상일·미래 날짜를 구분하며 좁은 화면에서는 가로로 스크롤합니다.
+- **설정**: 언어 선택 목록(한국어/English), 라이트/다크 테마. 기본값은 한국어와 라이트이며 선택은 기기에 저장됩니다. 기존 시스템 테마는 처음 읽을 때 기기의 현재 라이트/다크 값으로 한 번 저장하고 이후 기기 테마 변경을 따르지 않습니다.
+
+공통 버튼·선택 상태·내비게이션·앱 아이콘은 네이비를 사용합니다. 루틴별 표시·완료 체크·완료 잔디·현재 스트릭의 강조색은 사용자가 고른 색상을 사용합니다. 루틴 색상 수정은 기존 완료 잔디에도 즉시 반영되며 날짜별 기록은 그대로 보존됩니다. 지원 언어 목록은 `src/config.ts`에서 관리합니다.
+
+처음에는 빈 목록으로 시작합니다. 예시 데이터나 사용을 막는 온보딩은 없습니다.
+
+앱 이름·문서 제목·PWA 이름·아이콘은 AEHA로 통일합니다. 화면에는 제목과 필요한 상태·입력·오류 문구만 표시하며, 상단과 카드 간격을 간결하게 유지합니다. 비대상일은 옅은 회색과 패턴으로 표시하고 완료 색상보다 덜 강조합니다. 브랜드 변경과 관계없이 기존 IndexedDB 식별자·스키마와 PWA 설치 범위는 유지하여 저장 기록과 설치 경로를 보존합니다.
+
+## UI 디자인
+
+확정 로고와 앱 아이콘은 원본 자산을 그대로 사용합니다. UI는 따뜻한 아이보리(`#F6F5F3`)·화이트 카드와 딥 네이비(`#304565`), 다크 모드는 네이비 배경(`#121A27`)·차콜 카드(`#1B2534`)와 실버 블루(`#A7B8D3`)로 구성합니다. 루틴 고유 색상은 공통 UI 색상과 독립적으로 유지하며 코랄을 추가 강조색으로 사용하지 않습니다.
+
+페이지 제목과 통계 숫자의 굵기, 카드·컨트롤의 반경과 여백을 절제했습니다. 체크 버튼은 시각적으로 작게 보이면서 44px 터치 영역을 유지하며 추가 버튼은 48px입니다. 짧은 화면에서는 추가 버튼을 상단에 표시합니다. 내비게이션 높이와 safe-area를 반영한 하단 여백으로 마지막 콘텐츠까지 스크롤할 수 있습니다.
+
+잔디는 26주 원본을 유지하면서 화면에 완전한 주 열이 들어가도록 너비를 맞춥니다. 그래프 안에서만 가로로 스크롤하고 월·요일 레이블과 셀 간격을 정렬합니다. 비대상일 패턴 대비는 낮추고 네 상태의 배경·패턴·테두리를 구분합니다. 이 조정은 표시 계층에만 적용되며 날짜·일정·스트릭 계산은 변경하지 않습니다.
+
+## 로고 자산
+
+제공된 확정 시안의 세 갈래 곡선 심볼과 가는 AEHA 워드마크를 SVG 경로로 재구성했습니다. 시안의 슬로건은 앱에 포함하지 않습니다. `BrandLogo` 컴포넌트가 세 화면에서 같은 로고를 사용하며 배경에 맞춰 밝은 배경용/역상 자산을 선택합니다. 워드마크도 경로여서 외부 폰트가 필요하지 않습니다.
+
+- `public/brand/logo-{light,dark}.svg`: 심볼 + 워드마크
+- `public/brand/symbol-{light,dark}.svg`: 심볼 단독
+- `public/brand/*-mono-{light,dark}.svg`: 단색/역상
+- `public/brand/app-icon.svg`: 설치 아이콘 원본
+- `public/favicon.svg`, `favicon-32.png`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png`: 브라우저/PWA 자산
+
+단일 벡터 원본은 `scripts/brand-source.mjs`입니다. 모든 PNG는 해당 SVG를 Chromium으로 렌더링하며, 일반 빌드에는 미리 생성된 파일을 사용합니다. 재생성 명령은 다음과 같습니다.
+
+```sh
+npx playwright install chromium
+npm run brand:assets
+# 시스템 Chromium 사용: PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run brand:assets
+```
+
+maskable 아이콘은 불투명한 배경과 중앙 80% 안전 영역을 사용합니다. 밝은 배경용·역상 로고도 서비스 워커에 포함되어 오프라인에서 테마를 바꿀 수 있습니다. manifest 이름은 AEHA, 설치 범위와 배포 경로는 기존 `/A/`를 유지합니다.
+
+## 개발 실행
+
+Node.js **22.12 이상**이 필요합니다. CI는 Node.js 24를 사용합니다.
+
+```sh
+npm ci
+npm run dev
+```
+
+기본 개발 경로는 `http://localhost:5173/A/`입니다.
+
+```sh
+npm test               # Vitest: 날짜·일정·스트릭·저장 계층
+npm run test:watch     # 테스트 감시
+npm run typecheck      # TypeScript 검사
+npm run build          # TypeScript 검사 후 dist/ 프로덕션 빌드
+npm run preview        # 빌드 결과를 로컬에서 확인
+```
+
+PWA 서비스 워커와 오프라인 동작은 개발 서버 대신 프로덕션 빌드의 preview에서 확인합니다. 기본 preview 경로는 `http://localhost:4173/A/`입니다.
+
+### 실제 브라우저 테스트
+
+```sh
+npx playwright install chromium
+npm run build
+npm run test:e2e
+```
+
+Linux 시스템 라이브러리도 필요하다면 `npx playwright install --with-deps chromium`을 사용합니다. 설치된 Chromium을 사용할 때는 다음과 같이 실행할 수 있습니다.
+
+```sh
+PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium npm run test:e2e
+```
+
+Playwright는 모바일 화면 크기의 Chromium에서 빌드 결과를 실행합니다. 설정된 테스트 경로는 `/A/`이므로 다른 base로 빌드했다면 `VITE_BASE_PATH=/A/ npm run build` 후 실행하세요. 브라우저 자동화는 실제 Android·iPhone의 홈 화면 설치 검증을 대체하지 않습니다.
+
+### 구현 시 검증 결과
+
+- `npm test`: 단위·저장 계층 테스트 **55개 통과**.
+- 날짜·일정·스트릭 테스트 **43개**는 UTC, Asia/Seoul, America/New_York 각각에서 통과.
+- `npm run build`: TypeScript 검사와 프로덕션/PWA 빌드 통과. SVG 로고·favicon·설치 아이콘을 생성하고 빌드 산출물에 포함한 것을 확인했습니다. Chromium에서는 세 화면의 테마별 로고 표시, 오프라인 라이트/다크 로고 로딩, 아이콘 PNG 크기를 검증했습니다.
+- Playwright Chromium: **16개 통과**. 생성·수정·삭제, 체크·취소, 새로고침 보존, 일정 변경, 자정 직후 체크, 언어 선택 목록·테마, 기존 시스템 테마의 일회성 전환과 데이터 보존, 두 테마의 루틴별 색상·이전 잔디 재표시, AEHA 이름·매니페스트, 320px/375px/390px에서 완료·미완료·비대상 루틴이 섞인 홈과 버튼 겹침 방지, 한국어/영어 월 레이블·셀 정렬·가로 스크롤·마지막 카드의 내비게이션 여백, `/A/` 아이콘·서비스 워커, 오프라인 새로고침·기록을 검증. 테스트 데이터는 매번 격리된 브라우저 컨텍스트에서만 생성합니다.
+- 실제 Android/iPhone 홈 화면 설치와 GitHub Actions의 원격 배포는 아직 검증하지 않았습니다.
+
+## 기록과 날짜 규칙
+
+- 날짜 키는 사용자의 **로컬 달력 날짜**인 `YYYY-MM-DD`입니다. UTC 타임스탬프와 별도로 `createdDate`를 저장하여 루틴 생성일이 시간대 때문에 밀리지 않도록 합니다.
+- 연속 기록은 수행 대상일의 완료 횟수입니다. 비대상일과 생성 이전 날짜는 실패로 계산하지 않습니다.
+- 오늘 아직 체크하지 않았어도 이전 스트릭을 유지합니다. 완료하면 즉시 포함하며, 지나간 수행일을 놓쳤다면 끊깁니다.
+- 기존 루틴의 반복 요일 변경은 **내일부터 적용**됩니다. 이름·메모·카테고리·색상은 바로 적용됩니다. 일정 이력은 보존하며 같은 날 여러 번 수정하면 내일부터 적용할 일정만 갱신합니다. 오늘의 완료 기록과 과거 날짜의 의미는 유지됩니다.
+- `[routineId+date]` 고유 인덱스와 트랜잭션으로 한 루틴·날짜의 중복 기록을 방지합니다. 완료 취소는 같은 레코드의 `completed: false`로 남깁니다. 삭제는 `deletedAt`을 기록하고 목록에서 숨깁니다.
+- 스트릭 숫자를 별도 저장하지 않고 일정 이력과 수행 기록으로 계산합니다.
+
+모든 데이터는 현재 브라우저의 IndexedDB에 저장됩니다. 새로고침이나 앱 종료 후에도 유지되지만, 사이트 데이터 삭제·브라우저 저장 공간 정리·기기 변경 시 복구할 수 없습니다. 계정 동기화와 백업/내보내기 기능은 제공하지 않습니다. 같은 기기라도 브라우저나 사이트 주소가 달라지면 저장 공간이 다를 수 있습니다.
+
+## PWA 설치와 오프라인
+
+HTTPS로 배포된 앱에서 다음과 같이 설치할 수 있습니다.
+
+- **Android Chrome**: 브라우저 메뉴의 앱 설치 또는 홈 화면에 추가를 사용합니다.
+- **iPhone Safari**: 공유 메뉴 → 홈 화면에 추가를 사용합니다.
+
+앱 자체의 설치 안내 팝업은 없습니다. 매니페스트, 일반/마스크용 아이콘, Apple 터치 아이콘, standalone 모드와 모바일 safe-area를 제공합니다. 처음 온라인으로 방문해 서비스 워커가 필요한 리소스를 캐시한 뒤에는 오프라인에서도 실행·기록할 수 있습니다. 처음 방문하기 전에는 오프라인 실행할 수 없습니다.
+
+## GitHub Pages 배포
+
+`.github/workflows/deploy.yml`은 `main` 변경 시 다음 순서로 실행됩니다.
+
+1. `npm ci`
+2. `npm test`
+3. `npm run build` — TypeScript 검사 포함
+4. `dist/` 아티팩트 업로드 및 GitHub Pages 배포
+
+Pull Request에서는 테스트와 빌드만 수행하며 배포하지 않습니다. Actions 화면에서 수동 실행도 가능합니다. 배포 job에는 `pages: write`와 `id-token: write`, 빌드에는 `contents: read` 권한이 선언되어 있습니다.
+
+공개하려면 저장소 관리자가 다음을 진행해야 합니다.
+
+1. GitHub 저장소의 **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 설정합니다.
+2. **Settings → Actions → General**에서 Actions 및 워크플로가 사용하는 공식 GitHub Actions의 실행을 허용합니다. 조직 정책이 권한을 제한하면 관리자의 허용이 필요합니다.
+3. 이 소스코드를 커밋해 `main`에 push하거나 Pull Request를 병합합니다. `github-pages` 환경에 승인 규칙이 있다면 배포를 승인합니다.
+4. **Actions**에서 워크플로 성공과 Pages에 표시되는 실제 배포 URL을 확인합니다.
+
+현재 저장소 `esae-dev/A`의 **예상 배포 주소**는 **https://esae-dev.github.io/A/** 입니다. 워크플로 파일을 작성한 것만으로 실제 배포가 완료되지는 않습니다.
+
+Vite의 기본 base는 `/A/`입니다. Actions에서는 `GITHUB_REPOSITORY`의 저장소 이름을 읽어 `/<저장소명>/`을 적용하며 `*.github.io` 저장소는 `/`을 사용합니다. 매니페스트의 `id`, `start_url`, `scope`와 서비스 워커의 탐색 경로도 같은 base를 사용합니다.
+
+커스텀 도메인이나 다른 경로로 배포할 경우 앞뒤 `/`를 포함한 경로로 빌드하세요.
+
+```sh
+VITE_BASE_PATH=/ npm run build
+# 또는 VITE_BASE_PATH=/example/ npm run build
+```
+
+지속적으로 변경하려면 배포 워크플로의 build 단계에도 `VITE_BASE_PATH` 환경 변수를 지정해야 합니다. 이 설정만으로 GitHub의 커스텀 도메인/DNS가 구성되지는 않습니다.
+
+## 프로젝트 구조
+
+```text
+src/
+  App.tsx               세 화면과 사용자 동작
+  components/           루틴 편집, 스트릭 카드, 선형 아이콘
+  domain/               데이터 타입, 로컬 날짜, 일정, 순수 스트릭 계산과 테스트
+  data/                 버전 관리 Dexie 스키마, 저장소 API와 테스트
+  i18n.ts               한국어·영어 UI 리소스
+  styles.css            반응형 레이아웃, 테마, safe-area
+public/                 로컬 앱 아이콘
+e2e/                    Playwright 브라우저 테스트
+.github/workflows/      테스트·빌드·Pages 배포
+```
+
+화면은 저장소 API를 사용하고 IndexedDB에 직접 접근하지 않습니다. UUID, 수정 시각, 삭제/완료 취소 상태와 버전 관리 스키마는 데이터 확장을 위한 기반이며 현재 서버나 동기화 엔진은 없습니다.
