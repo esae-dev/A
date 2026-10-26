@@ -47,6 +47,17 @@ async function touchMove(page: Page, context: BrowserContext, from: { x: number;
   await cdp.detach()
 }
 
+async function settleRoutineLayout(page: Page) {
+  await page.locator('.routine-card').evaluateAll(async cards => {
+    const painted = () => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    // FLIP starts after the DOM has reordered. Flush that paint, await the actual
+    // transitions, then let Chromium update the touch hit regions before tapping.
+    await painted()
+    await Promise.all(cards.flatMap(card => card.getAnimations().map(animation => animation.finished.catch(() => {}))))
+    await painted()
+  })
+}
+
 test('upgrades actual v1 IndexedDB, preserves all data, and persists mouse order and undo restoration', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-10-26T12:00:00+09:00'))
   // Bootstrap an empty same-origin page so the NEW app cannot create its schema first.
@@ -114,19 +125,25 @@ test('supports real touch drag, keyboard reorder/cancel and separate check/edit 
   for (const name of ['A', 'B', 'C']) await add(page, name)
   await mouseMove(page, 'C', 'A', true)
   await expect.poll(() => names(page)).toEqual(['A', 'B', 'C'])
+  await settleRoutineLayout(page)
   const handle = page.getByRole('button', { name: 'C 순서 변경', exact: true })
+  // DOM order returns before the canceled drag has finished moving visually.
+  await handle.click({ trial: true })
   await handle.focus()
   await page.keyboard.press('Space')
   await expect(handle).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('status').filter({ hasText: 'C, C 위치로 이동합니다.' })).toHaveCount(1)
   await page.keyboard.press('ArrowUp')
   await expect(page.getByRole('status').filter({ hasText: 'C, B 위치로 이동합니다.' })).toHaveCount(1)
   await page.keyboard.press('Space')
   await expect.poll(() => names(page)).toEqual(['A', 'C', 'B'])
+  await settleRoutineLayout(page)
   await handle.click({ trial: true })
   const from = (await handle.boundingBox())!
   const to = (await page.getByRole('button', { name: 'A 순서 변경', exact: true }).boundingBox())!
   await touchMove(page, context, { x: from.x + 22, y: from.y + 22 }, { x: to.x + 22, y: to.y + 22 })
   await expect.poll(() => names(page)).toEqual(['C', 'A', 'B'])
+  await settleRoutineLayout(page)
   const manual = (await data(page)).routines
   await page.getByRole('button', { name: 'C 완료하기', exact: true }).tap()
   await expect.poll(() => names(page)).toEqual(['A', 'B', 'C'])

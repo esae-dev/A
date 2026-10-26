@@ -28,6 +28,8 @@ test('create, check, undo, reload, edit and delete an actual local routine', asy
   await card.getByRole('button', { name: '책 10쪽 읽기 완료 취소' }).click()
   await expect(card.getByRole('button', { name: '책 10쪽 읽기 완료하기' })).toHaveAttribute('aria-pressed', 'false')
   await card.getByRole('button', { name: '책 10쪽 읽기 완료하기' }).click()
+  // The check is optimistic; enabled again means the write and snapshot finished.
+  await expect(card.getByRole('button', { name: '책 10쪽 읽기 완료 취소' })).toBeEnabled()
   await page.reload()
   await expect(page.getByRole('button', { name: '책 10쪽 읽기 완료 취소' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: '스트릭', exact: true }).click()
@@ -79,11 +81,12 @@ test('weekday changes preserve today, reject no days and disable non-target rout
 test('a click immediately after local midnight records the new day', async ({ page }) => {
   await addRoutine(page, '자정 독서')
   await page.getByRole('button', { name: '자정 독서 완료하기' }).click()
-  await expect(page.getByRole('button', { name: '자정 독서 완료 취소' })).toBeVisible()
+  await expect(page.getByRole('button', { name: '자정 독서 완료 취소' })).toBeEnabled()
   // Change wall-clock time without advancing the app's refresh interval.
   await page.clock.setFixedTime(new Date('2026-10-27T00:00:01+09:00'))
   await page.getByRole('button', { name: '자정 독서 완료 취소' }).click()
   await expect(page.locator('.eyebrow')).toContainText('27일')
+  await expect(page.getByRole('button', { name: '자정 독서 완료 취소' })).toBeEnabled()
   await page.getByRole('button', { name: '스트릭', exact: true }).click()
   await expect(page.locator('.streak-value.current')).toHaveText('2회')
   await expect(page.locator('.heatmap-grid .completed')).toHaveCount(2)
