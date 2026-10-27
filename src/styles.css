@@ -25,10 +25,11 @@
   --off-pattern: #52657d0a;
   --nav-bg: #fff;
   --control-border: #b8c1cc;
-  --completion-accent: #61bea7;
-  --completion-ink: #2e7564;
-  --completion-border: #a1d7c8;
-  --completion-flash: #e1f3eb;
+  --completion-accent: #a69de6;
+  --completion-ink: #566b9f;
+  --completion-border: #c7c2e6;
+  --completion-surface: #f5f4fb;
+  --summary-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --nav-height: 68px;
   color-scheme: light;
 }
@@ -53,9 +54,9 @@ html[data-theme="dark"] {
   --off-pattern: #9aacc00c;
   --nav-bg: #161f2d;
   --control-border: #8795a9;
-  --completion-ink: #61bea7;
-  --completion-border: #41665f;
-  --completion-flash: #24483f;
+  --completion-ink: #b8b0ef;
+  --completion-border: #555a7c;
+  --completion-surface: #242b40;
   color: var(--text);
   background: var(--bg);
 }
@@ -85,21 +86,18 @@ html[data-theme="dark"] .brand-logo-dark { display: block; }
 .page-heading { margin: 4px 0 18px; }
 .eyebrow { color: var(--muted); font-size: 13px; letter-spacing: .025em; margin: 0 0 6px; }
 .page-title { font-size: clamp(25px, 5.4vw, 28px); letter-spacing: -.65px; line-height: 1.35; font-weight: 600; margin: 0; }
-.today-summary { padding: 14px 18px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; margin-bottom: 14px; }
+.today-summary { padding: 14px 18px; border: 1px solid var(--border); background: var(--surface); border-radius: 14px; margin-bottom: 14px; transition: background-color .5s var(--summary-ease), border-color .5s var(--summary-ease); }
 .summary-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 12px; color: var(--muted); }
-.summary-label { display: inline-flex; align-items: center; gap: 5px; }
-.today-summary.is-complete { border-color: var(--completion-border); }
+.summary-label { display: inline-flex; align-items: center; gap: 5px; transition: color .5s var(--summary-ease); }
+.today-summary.is-complete { border-color: var(--completion-border); background: var(--completion-surface); }
 .today-summary.is-complete .summary-label { color: var(--completion-ink); }
 .today-summary.is-complete .summary-fill { background: var(--completion-accent); }
-.today-summary.is-celebrating { animation: summary-complete 600ms ease-out; }
-@keyframes summary-complete {
-  0%, 100% { background: var(--surface); border-color: var(--completion-border); }
-  40% { background: var(--completion-flash); border-color: var(--completion-accent); }
-}
+.today-summary.is-completing .summary-label { animation: summary-label-in .3s var(--summary-ease) both; }
+@keyframes summary-label-in { from { opacity: 0; } to { opacity: 1; } }
 .summary-count { display: inline-flex; align-items: baseline; font-size: 13px; color: var(--muted); gap: 4px; }
 .summary-count strong { color: var(--text); font-size: 19px; font-weight: 500; }
 .summary-track { height: 3px; border-radius: 6px; background: var(--surface-soft); overflow: hidden; }
-.summary-fill { height: 100%; background: var(--primary); border-radius: inherit; transition: width .3s ease-out, background-color .3s ease-out; }
+.summary-fill { height: 100%; background: var(--primary); border-radius: inherit; transition: width .55s var(--summary-ease), background-color .5s var(--summary-ease); }
 .routine-list, .streak-list { display: grid; gap: 10px; }
 .drag-handle { flex: 0 0 44px; width: 44px; height: 44px; display: grid; place-items: center; margin-left: -10px; margin-right: -8px; padding: 10px; border-radius: 8px; background: transparent; color: var(--muted); touch-action: none; cursor: grab; }
 .drag-handle:active { cursor: grabbing; }
