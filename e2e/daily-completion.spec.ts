@@ -86,7 +86,7 @@ async function add(page: Page, name: string, onlySunday = false) {
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
 
-for (const theme of ['light', 'dark'] as const) test(`last check settles into lavender; undo, redo, tab return and restart in ${theme}`, async ({ page }) => {
+for (const theme of ['light', 'dark'] as const) test(`last check settles into sapphire; undo, redo, tab return and restart in ${theme}`, async ({ page }) => {
   const errors: string[] = []
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   page.on('pageerror', error => errors.push(error.message))
@@ -114,8 +114,11 @@ for (const theme of ['light', 'dark'] as const) test(`last check settles into la
   await expect(summary.locator('.summary-label')).toHaveText(complete)
   await expect(summary.locator('.summary-label svg')).toHaveCount(1)
   await expect(bar).toHaveAttribute('aria-valuenow', '2')
-  await expect(summary.locator('.summary-fill')).toHaveCSS('background-color', 'rgb(166, 157, 230)')
-  await expect(summary).toHaveCSS('background-color', en ? 'rgb(36, 43, 64)' : 'rgb(245, 244, 251)')
+  await expect(summary.locator('.summary-fill')).toHaveCSS('background-color', en ? 'rgb(135, 159, 203)' : 'rgb(64, 92, 134)')
+  await expect(summary.locator('.summary-label')).toHaveCSS('color', en ? 'rgb(180, 198, 232)' : 'rgb(52, 79, 120)')
+  await expect(summary.locator('.summary-label svg')).toHaveCSS('color', en ? 'rgb(180, 198, 232)' : 'rgb(52, 79, 120)')
+  await expect(summary).toHaveCSS('background-color', en ? 'rgb(32, 45, 66)' : 'rgb(240, 243, 248)')
+  await expect(summary).toHaveCSS('border-top-color', en ? 'rgb(72, 94, 128)' : 'rgb(197, 208, 224)')
   await expect(summary).not.toHaveClass(/is-completing/)
   expect(await summary.locator('.summary-fill').evaluate(el => Math.abs(el.getBoundingClientRect().width - el.parentElement!.getBoundingClientRect().width))).toBeLessThan(1)
   expect(await contrastRatio(summary.locator('.summary-label'), 'summary')).toBeGreaterThanOrEqual(4.5)
@@ -195,7 +198,7 @@ test('reduced motion keeps the completed styling with no entry or progress anima
   await add(page, 'A')
   await page.getByRole('button', { name: 'A 완료하기', exact: true }).tap()
   await expect(page.locator('.summary-label')).toHaveText('오늘도 완료!')
-  await expect(page.locator('.summary-fill')).toHaveCSS('background-color', 'rgb(166, 157, 230)')
+  await expect(page.locator('.summary-fill')).toHaveCSS('background-color', 'rgb(64, 92, 134)')
   await expect(page.locator('.summary-fill')).toHaveCSS('transition-property', 'none')
   expect(await page.locator('.today-summary').evaluate(el => el.getAnimations({ subtree: true }).length)).toBe(0)
   expect(await summaryEntries(page)).toEqual([])

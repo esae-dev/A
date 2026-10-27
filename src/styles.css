@@ -25,10 +25,10 @@
   --off-pattern: #52657d0a;
   --nav-bg: #fff;
   --control-border: #b8c1cc;
-  --completion-accent: #a69de6;
-  --completion-ink: #566b9f;
-  --completion-border: #c7c2e6;
-  --completion-surface: #f5f4fb;
+  --completion-accent: #405c86;
+  --completion-ink: #344f78;
+  --completion-border: #c5d0e0;
+  --completion-surface: #f0f3f8;
   --summary-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --nav-height: 68px;
   color-scheme: light;
@@ -54,9 +54,10 @@ html[data-theme="dark"] {
   --off-pattern: #9aacc00c;
   --nav-bg: #161f2d;
   --control-border: #8795a9;
-  --completion-ink: #b8b0ef;
-  --completion-border: #555a7c;
-  --completion-surface: #242b40;
+  --completion-accent: #879fcb;
+  --completion-ink: #b4c6e8;
+  --completion-border: #485e80;
+  --completion-surface: #202d42;
   color: var(--text);
   background: var(--bg);
 }
