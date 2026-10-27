@@ -111,6 +111,9 @@ test('upgrades actual v1 IndexedDB, preserves all data, and persists mouse order
   await mouseMove(page, '기존 루틴 C', '기존 루틴 B')
   await expect.poll(() => names(page)).toEqual(['기존 루틴 C', '기존 루틴 B', '기존 루틴 A'])
   expect((await data(page)).completions).toEqual(legacy.completions)
+  await page.getByRole('button', { name: '스트릭', exact: true }).click()
+  await expect(page.locator('.streak-routine-name')).toHaveText(['기존 루틴 A', '기존 루틴 C', '기존 루틴 B'])
+  await page.getByRole('button', { name: '홈', exact: true }).click()
   await page.reload()
   await expect.poll(() => names(page)).toEqual(['기존 루틴 C', '기존 루틴 B', '기존 루틴 A'])
   await page.getByRole('button', { name: '기존 루틴 A 완료 취소', exact: true }).click()
@@ -118,7 +121,32 @@ test('upgrades actual v1 IndexedDB, preserves all data, and persists mouse order
   await page.getByRole('button', { name: '기존 루틴 A 완료하기', exact: true }).click()
   await expect.poll(() => names(page)).toEqual(['기존 루틴 C', '기존 루틴 B', '기존 루틴 A'])
   await page.getByRole('button', { name: '스트릭', exact: true }).click()
+  await expect(page.locator('.streak-routine-name')).toHaveText(['기존 루틴 A', '기존 루틴 C', '기존 루틴 B'])
   await expect(page.locator('.streak-card').filter({ has: page.getByRole('heading', { name: '기존 루틴 A', exact: true }) }).locator('.streak-value.current')).toHaveText('2회')
+})
+
+test('streak falls back to creation order for missing positions without rewriting existing records', async ({ page }) => {
+  await page.goto('./')
+  for (const name of ['A', 'B', 'C']) await add(page, name)
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const r = indexedDB.open('eha-habit')
+    r.onerror = () => reject(r.error)
+    r.onsuccess = () => {
+      const db = r.result, tx = db.transaction('routines', 'readwrite'), store = tx.objectStore('routines'), rows = store.getAll()
+      rows.onsuccess = () => rows.result.forEach(row => {
+        delete row.sortOrder
+        store.put({ ...row, createdAt: `2026-10-19T0${{ C: 0, A: 1, B: 2 }[row.name as 'A' | 'B' | 'C']}:00:00Z` })
+      })
+      tx.oncomplete = () => { db.close(); resolve() }
+      tx.onerror = () => reject(tx.error)
+    }
+  }))
+  const before = await data(page)
+  await page.reload()
+  await expect.poll(() => names(page)).toEqual(['C', 'A', 'B'])
+  await page.getByRole('button', { name: '스트릭', exact: true }).click()
+  await expect(page.locator('.streak-routine-name')).toHaveText(['C', 'A', 'B'])
+  expect(await data(page)).toEqual(before)
 })
 
 test('supports real touch drag, keyboard reorder/cancel and separate check/edit taps', async ({ page, context }) => {
@@ -161,6 +189,9 @@ test('supports real touch drag, keyboard reorder/cancel and separate check/edit 
   await page.getByRole('button', { name: '닫기', exact: true }).tap()
   await page.reload()
   await expect.poll(() => names(page)).toEqual(['C', 'A', 'B'])
+  await page.getByRole('button', { name: '스트릭', exact: true }).click()
+  await expect(page.locator('.streak-routine-name')).toHaveText(['C', 'A', 'B'])
+  await page.getByRole('button', { name: '홈', exact: true }).click()
   await page.screenshot({ path: 'test-results/aeha-manual-order.png', animations: 'disabled' })
 })
 

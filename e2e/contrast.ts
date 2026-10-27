@@ -1,6 +1,6 @@
 import type { Locator } from '@playwright/test'
 
-export async function contrastRatio(locator: Locator, background: 'self' | 'fill' | 'card' = 'self') {
+export async function contrastRatio(locator: Locator, background: 'self' | 'fill' | 'card' | 'summary' = 'self') {
   return locator.evaluate((element, mode) => {
     const canvas = document.createElement('canvas')
     canvas.width = canvas.height = 1
@@ -17,7 +17,7 @@ export async function contrastRatio(locator: Locator, background: 'self' | 'fill
     }
     const foreground = luminance(getComputedStyle(element).color)
     const behind = luminance(mode === 'fill' ? getComputedStyle(element, '::before').backgroundColor
-      : getComputedStyle(mode === 'card' ? element.closest('.streak-card')! : element).backgroundColor)
+      : getComputedStyle(mode === 'card' ? element.closest('.streak-card')! : mode === 'summary' ? element.closest('.today-summary')! : element).backgroundColor)
     return (Math.max(foreground, behind) + 0.05) / (Math.min(foreground, behind) + 0.05)
   }, background)
 }

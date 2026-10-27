@@ -3,7 +3,7 @@ import type { Language } from './domain/types'
 export const messages = {
   ko: {
     home: '홈', streak: '스트릭', settings: '설정', todayTitle: '오늘의 루틴',
-    daily: '매일', todayDone: '오늘 완료',
+    daily: '매일', todayDone: '오늘 완료', allDoneToday: '오늘도 완료!',
     emptyTitle: '루틴 없음',
     add: '루틴 추가', emptyStreakTitle: '기록 없음',
     off: '오늘은 쉬는 날', done: '완료', todo: '완료하기', undo: '완료 취소', edit: '수정',
@@ -24,7 +24,7 @@ export const messages = {
   },
   en: {
     home: 'Home', streak: 'Streaks', settings: 'Settings', todayTitle: 'Today’s routines',
-    daily: 'Every day', todayDone: 'Completed today',
+    daily: 'Every day', todayDone: 'Completed today', allDoneToday: 'All done today!',
     emptyTitle: 'No routines',
     add: 'Add routine', emptyStreakTitle: 'No records',
     off: 'Rest day', done: 'Done', todo: 'Mark complete', undo: 'Undo completion', edit: 'Edit',

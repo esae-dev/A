@@ -3,6 +3,8 @@ import { repository } from './data/repository'
 import { STORAGE_WAIT_MS } from './data/db'
 import { localDateKey } from './domain/dates'
 import { isScheduled } from './domain/routines'
+import { compareManualOrder } from './domain/ordering'
+import { dailyProgress } from './domain/progress'
 import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
 import { supportedLanguages, themes } from './config'
 import { messages } from './i18n'
@@ -12,6 +14,7 @@ import { StreakCard } from './components/StreakCard'
 import { BrandLogo } from './components/BrandLogo'
 import { RoutineList } from './components/RoutineList'
 import { DeleteRoutineDialog } from './components/DeleteRoutineDialog'
+import { TodaySummary } from './components/TodaySummary'
 import { applyTheme, finishLaunch, initialTheme } from './theme'
 
 type Page = 'home' | 'streak' | 'settings'
@@ -27,6 +30,7 @@ export default function App() {
   const returnFocus = useRef<HTMLElement | null>(null)
   const [bootTheme] = useState(initialTheme)
   const [busy, setBusy] = useState(false)
+  const [completionEvent, setCompletionEvent] = useState(0)
   const [loading, setLoading] = useState(true)
   const [loadDelayed, setLoadDelayed] = useState(false)
   const storageStatus = useSyncExternalStore(repository.subscribeStorageStatus, repository.getStorageStatus)
@@ -110,10 +114,12 @@ export default function App() {
     setBusy(true)
     try {
       await action()
-      setSnapshot(await repository.getSnapshot())
+      const next = await repository.getSnapshot()
+      setSnapshot(next)
       setToday(localDateKey())
       setError(false)
       if (closeEditor) setEditor(null)
+      return next
     } catch (cause) {
       setError(true)
       throw cause
@@ -131,9 +137,7 @@ export default function App() {
 
   const routines = snapshot?.routines ?? []
   const completions = snapshot?.completions ?? []
-  const completedToday = new Set(completions.filter(c => c.date === today && c.completed).map(c => c.routineId))
-  const scheduled = routines.filter(r => isScheduled(r, today))
-  const doneCount = scheduled.filter(r => completedToday.has(r.id)).length
+  const progress = dailyProgress(routines, completions, today)
   const dateLabel = new Intl.DateTimeFormat(supportedLanguages.find(item => item.value === language)?.locale, {
     month: 'long', day: 'numeric', weekday: 'long',
   }).format(new Date(`${today}T12:00:00`))
@@ -148,7 +152,10 @@ export default function App() {
     setToday(date)
     if (!isScheduled(routine, date)) return
     const completed = completions.some(c => c.routineId === routine.id && c.date === date && c.completed)
-    await mutate(() => repository.setCompletion(routine.id, date, !completed))
+    const next = await mutate(() => repository.setCompletion(routine.id, date, !completed))
+    if (!completed && next && date === localDateKey() && dailyProgress(next.routines, next.completions, date).allDone) {
+      setCompletionEvent(event => event + 1)
+    }
   }
 
   return (
@@ -180,12 +187,7 @@ export default function App() {
         {!snapshot && !error && !notice && <p className="loading-state" role="status">{t.loading}</p>}
 
         {snapshot && page === 'home' && <>
-          {routines.length > 0 && <section className="today-summary" aria-label={t.todayDone}>
-            <div className="summary-heading"><span>{t.todayDone}</span><span className="summary-count"><strong>{doneCount}</strong><span> / {scheduled.length}</span></span></div>
-            <div className="summary-track" role="progressbar" aria-label={t.progress} aria-valuenow={doneCount} aria-valuemin={0} aria-valuemax={scheduled.length || 1}>
-              <div className="summary-fill" style={{ width: `${scheduled.length ? doneCount / scheduled.length * 100 : 0}%` }} />
-            </div>
-          </section>}
+          {routines.length > 0 && <TodaySummary key={`summary-${today}`} progress={progress} completionEvent={completionEvent} language={language} />}
 
           {routines.length === 0 ? <div className="empty-state">
             <div className="empty-symbol"><Icon name="check" size={28} /></div>
@@ -198,7 +200,7 @@ export default function App() {
         </>}
 
         {snapshot && page === 'streak' && (routines.length > 0
-          ? <div className="streak-list">{routines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
+          ? <div className="streak-list">{[...routines].sort(compareManualOrder).map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
           : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
 
         {snapshot && page === 'settings' && <>
