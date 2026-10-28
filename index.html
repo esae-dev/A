@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#121a27" />
     <style>
-      html,body{margin:0;background:#f6f5f3;color-scheme:light}
-      html[data-theme="dark"],html[data-theme="dark"] body{background:#121a27;color-scheme:dark}
-      #launch-brand{display:none;position:fixed;inset:0;z-index:50;place-items:center;background:#f6f5f3;pointer-events:none}
-      html[data-theme="dark"] #launch-brand{background:#121a27}
+      html,body{margin:0;background:#121a27;color-scheme:dark}
+      html[data-theme="light"],html[data-theme="light"] body{background:#f6f5f3;color-scheme:light}
+      #launch-brand{display:none;position:fixed;inset:0;z-index:50;place-items:center;background:#121a27;pointer-events:none}
+      html[data-theme="light"] #launch-brand{background:#f6f5f3}
       html[data-launch="pending"] #launch-brand,html[data-launch="revealing"] #launch-brand,html[data-launch="ready"] #launch-brand{display:grid}
       #launch-brand img{grid-area:1/1;width:min(248px,66vw);height:auto;opacity:1;animation:launch-logo-in 120ms ease-out both}
       #launch-brand .launch-dark{display:none}
@@ -20,8 +20,8 @@
     </style>
     <script>
       (() => {
-        let theme = 'light';
-        try { if (localStorage.getItem('aeha-theme-hint') === 'dark') theme = 'dark'; } catch {}
+        let theme = 'dark';
+        try { if (localStorage.getItem('aeha-theme-hint') === 'light') theme = 'light'; } catch {}
         document.documentElement.dataset.theme = theme;
         document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#161f2d' : '#ffffff';
         if ((matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -38,7 +38,7 @@
     <meta name="apple-mobile-web-app-title" content="AEHA" />
     <link rel="icon" type="image/png" sizes="32x32" href="%BASE_URL%favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
-    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%BASE_URL%apple-touch-icon-v2.png" />
     <title>AEHA</title>
   </head>
   <body>

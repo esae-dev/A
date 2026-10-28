@@ -94,7 +94,7 @@ test('a click immediately after local midnight records the new day', async ({ pa
 
 test('language dropdown and two explicit themes persist through reload', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await expect(page.getByRole('combobox', { name: '언어' }).locator('option')).toHaveCount(2)
   await expect(page.getByRole('group', { name: '테마' }).getByRole('button')).toHaveCount(2)
@@ -176,7 +176,7 @@ test('project subpath manifest, icons, service worker and offline read/write', a
     expect(png.readUInt32BE(16)).toBe(size)
     expect(png.readUInt32BE(20)).toBe(size)
   }
-  for (const path of ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'brand/logo-light.svg', 'brand/logo-dark.svg', 'brand/symbol-light.svg', 'brand/symbol-dark.svg']) {
+  for (const path of ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'apple-touch-icon-v2.png', 'brand/logo-light.svg', 'brand/logo-dark.svg', 'brand/symbol-light.svg', 'brand/symbol-dark.svg']) {
     expect((await page.request.get(`/A/${path}`)).status()).toBe(200)
   }
   const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)

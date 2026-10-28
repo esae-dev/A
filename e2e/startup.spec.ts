@@ -23,9 +23,9 @@ test('standalone preboot uses the existing logo and cached dark surface, then ex
   release()
   await expect(page.getByRole('heading', { name: '오늘의 루틴', exact: true })).toBeVisible()
   await expect(page.locator('#launch-brand')).toBeHidden()
-  // IndexedDB is authoritative: a new database defaults to light, regardless of hint.
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light')
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('aeha-theme-hint'))).toBe('light')
+  // A new database now keeps the same dark background through app readiness.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('aeha-theme-hint'))).toBe('dark')
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('button', { name: '다크', exact: true }).click()
   await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#161f2d')

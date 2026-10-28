@@ -21,11 +21,14 @@ const browser = await chromium.launch({
 try {
   const page = await browser.newPage({ deviceScaleFactor: 1 })
   // Render the SVG source, without an image-generation step or a remote font.
-  for (const [file, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512], ['apple-touch-icon.png', 180], ['favicon-32.png', 32]]) {
+  for (const [file, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512], ['apple-touch-icon.png', 180], ['apple-touch-icon-v2.png', 180], ['favicon-32.png', 32]]) {
     await page.setViewportSize({ width: size, height: size })
-    const source = file === 'icon-maskable-512.png' || file === 'apple-touch-icon.png' ? appIconSvg(true) : icon
-    await page.setContent(`<style>html,body{margin:0}svg{display:block;width:${size}px;height:${size}px}</style>${source}`)
-    await page.screenshot({ path: `${publicDir}/${file}`, omitBackground: true })
+    const apple = file.startsWith('apple-touch-icon')
+    // Apple applies its own mask. Keep the existing square, borderless vector
+    // and explicitly render an opaque PNG backed by navy.
+    const source = file === 'icon-maskable-512.png' || apple ? appIconSvg(true) : icon
+    await page.setContent(`<style>html,body{margin:0${apple ? ';background:#101c30' : ''}}svg{display:block;width:${size}px;height:${size}px}</style>${source}`)
+    await page.screenshot({ path: `${publicDir}/${file}`, omitBackground: !apple })
     const png = await readFile(`${publicDir}/${file}`)
     if (png.readUInt32BE(16) !== size || png.readUInt32BE(20) !== size) throw new Error(`Invalid dimensions: ${file}`)
   }

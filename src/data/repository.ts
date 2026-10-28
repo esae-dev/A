@@ -18,7 +18,7 @@ export class RepositoryError extends Error {
   }
 }
 
-const defaultPreferences: Preferences = { language: 'ko', theme: 'light' };
+const defaultPreferences: Preferences = { language: 'ko', theme: 'dark' };
 
 function currentDeviceTheme(): Theme {
   return typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';

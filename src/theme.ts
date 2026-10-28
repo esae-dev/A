@@ -2,7 +2,7 @@ import type { Theme } from './domain/types'
 
 /** Presentation hint only. IndexedDB remains the authoritative preference. */
 export function initialTheme(): Theme {
-  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
+  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
 }
 
 export function applyTheme(theme: Theme, remember: boolean) {

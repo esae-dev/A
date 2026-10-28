@@ -198,7 +198,7 @@ test('reduced motion keeps the completed styling with no entry or progress anima
   await add(page, 'A')
   await page.getByRole('button', { name: 'A 완료하기', exact: true }).tap()
   await expect(page.locator('.summary-label')).toHaveText('오늘도 완료!')
-  await expect(page.locator('.summary-fill')).toHaveCSS('background-color', 'rgb(64, 92, 134)')
+  await expect(page.locator('.summary-fill')).toHaveCSS('background-color', 'rgb(135, 159, 203)')
   await expect(page.locator('.summary-fill')).toHaveCSS('transition-property', 'none')
   expect(await page.locator('.today-summary').evaluate(el => el.getAnimations({ subtree: true }).length)).toBe(0)
   expect(await summaryEntries(page)).toEqual([])

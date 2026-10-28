@@ -124,7 +124,7 @@ describe('IndexedDB repository', () => {
   });
 
   it('retains routines, undone states and language/theme across database reopen', async () => {
-    expect((await repository.getSnapshot()).preferences).toEqual({ language: 'ko', theme: 'light' });
+    expect((await repository.getSnapshot()).preferences).toEqual({ language: 'ko', theme: 'dark' });
     const routine = await repository.createRoutine(input);
     await repository.setCompletion(routine.id, '2026-10-26', true);
     await repository.setCompletion(routine.id, '2026-10-26', false);
@@ -159,11 +159,23 @@ describe('IndexedDB repository', () => {
     expect(await database.preferences.get('app')).toEqual({ id: 'app', language: 'en', theme });
   });
 
-  it('defaults to light on dark devices and rejects new system preferences', async () => {
-    repository = createRepository(database, () => clock, () => 'dark');
-    expect((await repository.getSnapshot()).preferences.theme).toBe('light');
+  it('defaults to dark on light devices and rejects new system preferences', async () => {
+    repository = createRepository(database, () => clock, () => 'light');
+    expect((await repository.getSnapshot()).preferences.theme).toBe('dark');
     await expect(repository.savePreferences({ language: 'ko', theme: 'system' } as unknown as Preferences)).rejects.toThrow('invalid-preferences');
     expect(await database.preferences.count()).toBe(0);
+  });
+
+  it.each(['light', 'dark'] as const)('preserves saved %s and language instead of applying the new default', async theme => {
+    const routine = await repository.createRoutine(input);
+    await repository.setCompletion(routine.id, '2026-10-26', true);
+    await database.preferences.put({ id: 'app', language: 'en', theme });
+    const before = { routines: await database.routines.toArray(), completions: await database.completions.toArray(), preferences: await database.preferences.toArray() };
+    database.close();
+    database = new HabitDatabase(database.name);
+    repository = createRepository(database, () => clock, () => theme === 'light' ? 'dark' : 'light');
+    expect((await repository.getSnapshot()).preferences).toEqual({ language: 'en', theme });
+    expect({ routines: await database.routines.toArray(), completions: await database.completions.toArray(), preferences: await database.preferences.toArray() }).toEqual(before);
   });
 
   it('recolors a routine without changing completions, schedules or streaks', async () => {
