@@ -6,11 +6,11 @@ import { recordReferenceDate } from '../domain/routines';
 import { Icon } from './Icon';
 
 const copy = {
-  ko: { current: '현재 연속', longest: '최장 연속', count: '회', completed: '완료', missed: '미완료', off: '비대상일', future: '예정', history: '최근 26주 기록', weekdays: ['일', '월', '화', '수', '목', '금', '토'], finished: '완료 기록', started: '시작일', finishDate: '마무리일', total: '총 완료 일수', days: '일', finishedHistory: '마무리일 기준 26주 기록', afterFinish: '마무리 이후' },
-  en: { current: 'Current streak', longest: 'Best streak', count: '', completed: 'Done', missed: 'Not done', off: 'Not scheduled', future: 'Upcoming', history: 'Last 26 weeks', weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], finished: 'Completed record', started: 'Started', finishDate: 'Finished', total: 'Completed days', days: 'days', finishedHistory: '26 weeks ending on finish date', afterFinish: 'After finish' },
+  ko: { current: '현재 연속', longest: '최장 연속', count: '회', completed: '완료', missed: '미완료', off: '비대상일', future: '예정', history: '최근 26주 기록', weekdays: ['일', '월', '화', '수', '목', '금', '토'], finished: '완료 기록', started: '시작일', finishDate: '마무리일', total: '총 완료 일수', days: '일', finishedHistory: '마무리일 기준 26주 기록', afterFinish: '마무리 이후', remove: '완료 기록 삭제' },
+  en: { current: 'Current streak', longest: 'Best streak', count: '', completed: 'Done', missed: 'Not done', off: 'Not scheduled', future: 'Upcoming', history: 'Last 26 weeks', weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], finished: 'Completed record', started: 'Started', finishDate: 'Finished', total: 'Completed days', days: 'days', finishedHistory: '26 weeks ending on finish date', afterFinish: 'After finish', remove: 'Delete completed record' },
 };
 
-export function StreakCard({ routine, completions, today, language }: { routine: Routine; completions: Completion[]; today: string; language: 'ko' | 'en' }) {
+export function StreakCard({ routine, completions, today, language, busy = false, onDelete }: { routine: Routine; completions: Completion[]; today: string; language: 'ko' | 'en'; busy?: boolean; onDelete?: (routine: Routine, opener: HTMLElement) => void }) {
   const t = copy[language];
   const finished = Boolean(routine.finishedAt);
   const through = recordReferenceDate(routine, today);
@@ -54,10 +54,13 @@ export function StreakCard({ routine, completions, today, language }: { routine:
   const shortDateFormat = new Intl.DateTimeFormat(language, { year: 'numeric', month: 'short', day: 'numeric' });
   const historyLabel = finished ? t.finishedHistory : t.history;
   function dateObject(date: string) { const [year, month, day] = date.split('-').map(Number); return new Date(year, month - 1, day, 12); }
+  const title = <h2 className="streak-routine-name"><span className="routine-color-dot" />{routine.name}</h2>;
 
   return <article className={`streak-card${finished ? ' is-finished' : ''}`} style={{ '--routine-color': routine.color } as CSSProperties} data-through-date={through}>
-    {finished && <p className="finished-status"><Icon name="check" size={14} />{t.finished}</p>}
-    <h2 className="streak-routine-name"><span className="routine-color-dot" />{routine.name}</h2>
+    {finished ? <div className="finished-card-heading">
+      <div><p className="finished-status"><Icon name="check" size={14} />{t.finished}</p>{title}</div>
+      {onDelete && <button type="button" className="icon-button finished-delete" disabled={busy} aria-label={`${routine.name} ${t.remove}`} onClick={event => onDelete(routine, event.currentTarget)}><Icon name="trash" size={18} /></button>}
+    </div> : title}
     {finished && <dl className="finished-dates">
       <div><dt>{t.started}</dt><dd><time dateTime={routine.createdDate}>{shortDateFormat.format(dateObject(routine.createdDate))}</time></dd></div>
       <div><dt>{t.finishDate}</dt><dd><time dateTime={through}>{shortDateFormat.format(dateObject(through))}</time></dd></div>

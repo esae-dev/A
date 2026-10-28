@@ -224,7 +224,7 @@ export default function App() {
             ? <div className="streak-list">{[...routines].sort(compareManualOrder).map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
             : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>
             : finishedRoutines.length > 0
-              ? <div className="streak-list">{finishedRoutines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
+              ? <div className="streak-list">{finishedRoutines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} busy={controlsBusy} onDelete={confirmDelete} />)}</div>
               : <div className="empty-state"><div className="empty-symbol"><Icon name="check" size={28} /></div><h2>{t.emptyFinishedTitle}</h2></div>}
         </>}
 
