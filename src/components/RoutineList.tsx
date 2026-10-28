@@ -21,6 +21,7 @@ interface Props {
   busy: boolean
   onToggle: (routine: Routine) => Promise<void>
   onEdit: (routine: Routine, opener: HTMLElement) => void
+  onFinish: (routine: Routine, opener: HTMLElement) => void
   onDelete: (routine: Routine, opener: HTMLElement) => void
   onMove: (activeId: string, overId: string) => Promise<unknown>
 }
@@ -102,7 +103,7 @@ function RefreshLayoutMeasurements({ items }: { items: string[] }) {
   return null
 }
 
-function SortableRoutineCard({ routine, language, today, busy, done, interactionDisabled, animateChecks, onToggle, onEdit, onDelete }: Props & { routine: Routine; done: boolean; interactionDisabled: boolean; animateChecks: boolean }) {
+function SortableRoutineCard({ routine, language, today, busy, done, interactionDisabled, animateChecks, onToggle, onEdit, onFinish, onDelete }: Props & { routine: Routine; done: boolean; interactionDisabled: boolean; animateChecks: boolean }) {
   const reducedMotion = useReducedMotion()
   const { measureDroppableContainers } = useDndContext()
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging, items } = useSortable({
@@ -141,7 +142,7 @@ function SortableRoutineCard({ routine, language, today, busy, done, interaction
       <button className="check-button" disabled={!isDue || interactionDisabled} aria-pressed={done} aria-label={`${routine.name} ${!isDue ? t.off : done ? t.undo : t.todo}`} onClick={toggle}>
         {done ? <Icon name="check" size={22} /> : !isDue ? <span aria-hidden="true">−</span> : null}
       </button>
-      <RoutineActions routine={routine} language={language} disabled={interactionDisabled} onEdit={onEdit} onDelete={onDelete} />
+      <RoutineActions routine={routine} language={language} disabled={interactionDisabled} onEdit={onEdit} onFinish={onFinish} onDelete={onDelete} />
     </div>
   </article>
 }

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { repository } from './data/repository'
 import { STORAGE_WAIT_MS } from './data/db'
 import { localDateKey } from './domain/dates'
-import { isScheduled } from './domain/routines'
+import { isActiveRoutine, isScheduled } from './domain/routines'
 import { compareManualOrder } from './domain/ordering'
 import { dailyProgress } from './domain/progress'
 import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
@@ -14,6 +14,7 @@ import { StreakCard } from './components/StreakCard'
 import { BrandLogo } from './components/BrandLogo'
 import { RoutineList } from './components/RoutineList'
 import { DeleteRoutineDialog } from './components/DeleteRoutineDialog'
+import { FinishRoutineDialog } from './components/FinishRoutineDialog'
 import { TodaySummary } from './components/TodaySummary'
 import { applyTheme, finishLaunch, initialTheme } from './theme'
 
@@ -27,6 +28,8 @@ export default function App() {
   const [error, setError] = useState(false)
   const [editor, setEditor] = useState<Routine | 'new' | null>(null)
   const [deleting, setDeleting] = useState<Routine | null>(null)
+  const [finishing, setFinishing] = useState<Routine | null>(null)
+  const [streakView, setStreakView] = useState<'active' | 'finished'>('active')
   const returnFocus = useRef<HTMLElement | null>(null)
   const [bootTheme] = useState(initialTheme)
   const [busy, setBusy] = useState(false)
@@ -102,6 +105,17 @@ export default function App() {
     setDeleting(routine)
   }
 
+  function confirmFinish(routine: Routine, opener: HTMLElement) {
+    returnFocus.current = opener
+    setFinishing(routine)
+  }
+
+  async function finishRoutine() {
+    if (!finishing) return
+    await mutate(() => repository.finishRoutine(finishing.id))
+    setFinishing(null)
+  }
+
   async function deleteRoutine() {
     if (!deleting) return
     await mutate(() => repository.deleteRoutine(deleting.id))
@@ -135,7 +149,9 @@ export default function App() {
       : repository.createRoutine(input), true)
   }
 
-  const routines = snapshot?.routines ?? []
+  const allRoutines = snapshot?.routines ?? []
+  const routines = useMemo(() => allRoutines.filter(isActiveRoutine), [allRoutines])
+  const finishedRoutines = useMemo(() => allRoutines.filter(r => !r.deletedAt && r.finishedAt).sort((a, b) => b.finishedAt!.localeCompare(a.finishedAt!) || compareManualOrder(a, b)), [allRoutines])
   const completions = snapshot?.completions ?? []
   const progress = dailyProgress(routines, completions, today)
   const dateLabel = new Intl.DateTimeFormat(supportedLanguages.find(item => item.value === language)?.locale, {
@@ -194,14 +210,23 @@ export default function App() {
             <h2>{t.emptyTitle}</h2>
             <button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button>
           </div> : <RoutineList key={today} routines={routines} completions={completions} today={today} language={language}
-            busy={controlsBusy} onToggle={toggleRoutine} onEdit={openEditor} onDelete={confirmDelete}
+            busy={controlsBusy} onToggle={toggleRoutine} onEdit={openEditor} onFinish={confirmFinish} onDelete={confirmDelete}
             onMove={(activeId, overId) => mutate(() => repository.moveRoutine(activeId, overId))} />}
           <button className="fab" aria-label={t.add} disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={26} /></button>
         </>}
 
-        {snapshot && page === 'streak' && (routines.length > 0
-          ? <div className="streak-list">{[...routines].sort(compareManualOrder).map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
-          : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>)}
+        {snapshot && page === 'streak' && <>
+          <div className="segmented-control streak-view-control" role="group" aria-label={t.streakView}>
+            <button className={streakView === 'active' ? 'selected' : ''} aria-pressed={streakView === 'active'} onClick={() => setStreakView('active')}>{t.inProgress}</button>
+            <button className={streakView === 'finished' ? 'selected' : ''} aria-pressed={streakView === 'finished'} onClick={() => setStreakView('finished')}>{t.finishedRecords}</button>
+          </div>
+          {streakView === 'active' ? routines.length > 0
+            ? <div className="streak-list">{[...routines].sort(compareManualOrder).map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
+            : <div className="empty-state"><div className="empty-symbol"><Icon name="streak" size={28} /></div><h2>{t.emptyStreakTitle}</h2><button className="primary-button" disabled={controlsBusy} onClick={() => openEditor('new')}><Icon name="plus" size={18} />{t.add}</button></div>
+            : finishedRoutines.length > 0
+              ? <div className="streak-list">{finishedRoutines.map(routine => <StreakCard key={routine.id} routine={routine} completions={completions} today={today} language={language} />)}</div>
+              : <div className="empty-state"><div className="empty-symbol"><Icon name="check" size={28} /></div><h2>{t.emptyFinishedTitle}</h2></div>}
+        </>}
 
         {snapshot && page === 'settings' && <>
           <div className="settings-card">
@@ -230,6 +255,8 @@ export default function App() {
         onSave={saveRoutine} onClose={() => { if (!busy) setEditor(null) }} returnFocus={returnFocus.current} />}
       {deleting && <DeleteRoutineDialog routine={deleting} language={language} busy={controlsBusy} returnFocus={returnFocus.current}
         onDelete={deleteRoutine} onClose={() => { if (!busy) setDeleting(null) }} />}
+      {finishing && <FinishRoutineDialog routine={finishing} language={language} busy={controlsBusy} returnFocus={returnFocus.current}
+        onFinish={finishRoutine} onClose={() => { if (!busy) setFinishing(null) }} />}
     </div>
   )
 }

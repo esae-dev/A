@@ -1,4 +1,4 @@
-import { isScheduled } from './routines';
+import { isActiveRoutine, isScheduled } from './routines';
 import type { Completion, DateKey, Routine } from './types';
 
 /** The exact pre-v2 ordering, also used to assign migration defaults. */
@@ -21,12 +21,12 @@ export function homeGroup(routine: Routine, completed: ReadonlySet<string>, toda
 }
 
 export function orderForHome(routines: readonly Routine[], completed: ReadonlySet<string>, today: DateKey): Routine[] {
-  return routines.filter(r => !r.deletedAt).sort((a, b) => homeGroup(a, completed, today) - homeGroup(b, completed, today) || compareManualOrder(a, b));
+  return routines.filter(isActiveRoutine).sort((a, b) => homeGroup(a, completed, today) - homeGroup(b, completed, today) || compareManualOrder(a, b));
 }
 
 /** Reorder only the chosen group's existing slots; preserve all other positions. */
 export function moveWithinHomeGroup(routines: readonly Routine[], activeId: string, overId: string, completed: ReadonlySet<string>, today: DateKey): Routine[] {
-  const manual = routines.filter(r => !r.deletedAt).sort(compareManualOrder);
+  const manual = routines.filter(isActiveRoutine).sort(compareManualOrder);
   const active = manual.find(r => r.id === activeId);
   const over = manual.find(r => r.id === overId);
   if (!active || !over || activeId === overId || homeGroup(active, completed, today) !== homeGroup(over, completed, today)) return manual;

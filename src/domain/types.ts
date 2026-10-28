@@ -27,6 +27,10 @@ export interface Routine {
   createdAt: string;
   updatedAt: string;
   deletedAt?: string;
+  /** Finishing is independent of deletion and does not alter any daily records. */
+  finishedAt?: string;
+  /** Capture the local finish day so archived graphs stay fixed across timezones. */
+  finishedDate?: DateKey;
   /** Persisted manual order; optional for backwards-compatible legacy records. */
   sortOrder?: number;
 }

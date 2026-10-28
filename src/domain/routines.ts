@@ -1,8 +1,17 @@
-import { dayOfWeek, isDateKey } from './dates';
+import { dayOfWeek, isDateKey, localDateKey } from './dates';
 import type { Category, DateKey, Routine, RoutineInput, ScheduleChange, Weekday } from './types';
 
 export const MAX_NAME_LENGTH = 80;
 export const MAX_MEMO_LENGTH = 500;
+
+export function isActiveRoutine(routine: Routine): boolean {
+  return !routine.deletedAt && !routine.finishedAt;
+}
+
+/** Daily scheduling remains historical; only the record viewport is frozen. */
+export function recordReferenceDate(routine: Routine, today: DateKey): DateKey {
+  return routine.finishedDate ?? (routine.finishedAt ? localDateKey(new Date(routine.finishedAt)) : today);
+}
 
 export type ValidationCode = 'nameRequired' | 'nameTooLong' | 'memoTooLong' | 'invalidCategory' | 'invalidColor' | 'daysRequired' | 'invalidDays';
 

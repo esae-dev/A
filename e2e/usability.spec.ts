@@ -39,7 +39,7 @@ for (const language of ['ko', 'en'] as const) test(`action menu stays on screen,
   await trigger.tap()
   const menu = page.getByRole('menu')
   await expect(menu).toBeVisible()
-  await expect(page.getByRole('menuitem')).toHaveText(korean ? ['수정', '삭제'] : ['Edit', 'Delete'])
+  await expect(page.getByRole('menuitem')).toHaveText(korean ? ['수정', '루틴 마무리', '삭제'] : ['Edit', 'Finish routine', 'Delete'])
   const box = (await menu.boundingBox())!, nav = (await page.locator('.bottom-nav').boundingBox())!
   expect(box.x).toBeGreaterThanOrEqual(8)
   expect(box.x + box.width).toBeLessThanOrEqual(312)

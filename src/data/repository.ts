@@ -1,6 +1,6 @@
 import { db, type HabitDatabase } from './db';
 import { addDays, isDateKey, localDateKey } from '../domain/dates';
-import { isScheduled, normalizeRoutineInput, updateSchedule } from '../domain/routines';
+import { isActiveRoutine, isScheduled, normalizeRoutineInput, updateSchedule } from '../domain/routines';
 import type { Completion, DateKey, Preferences, Routine, RoutineInput, Theme } from '../domain/types';
 import { supportedLanguages, themes } from '../config';
 import { compareLegacyOrder, compareManualOrder, completionIds, moveWithinHomeGroup } from '../domain/ordering';
@@ -12,7 +12,7 @@ export interface HabitSnapshot {
 }
 
 export class RepositoryError extends Error {
-  constructor(readonly code: 'routine-not-found' | 'invalid-completion' | 'invalid-preferences') {
+  constructor(readonly code: 'routine-not-found' | 'routine-finished' | 'invalid-completion' | 'invalid-preferences') {
     super(code);
     this.name = 'RepositoryError';
   }
@@ -29,6 +29,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
   async function requireRoutine(id: string): Promise<Routine> {
     const routine = await database.routines.get(id);
     if (!routine || routine.deletedAt) throw new RepositoryError('routine-not-found');
+    if (routine.finishedAt) throw new RepositoryError('routine-finished');
     return routine;
   }
 
@@ -46,7 +47,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         const routines = allRoutines
           .filter((routine) => !routine.deletedAt)
           .sort(compareLegacyOrder);
-        const activeIds = new Set(routines.map((routine) => routine.id));
+        const visibleIds = new Set(routines.map((routine) => routine.id));
         const theme = savedPreferences?.theme === 'system' ? deviceTheme() : savedPreferences?.theme;
         if (savedPreferences?.theme === 'system') {
           // Keep the language and any future fields; never touch routine/history data.
@@ -54,7 +55,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         }
         return {
           routines,
-          completions: allCompletions.filter((completion) => activeIds.has(completion.routineId)),
+          completions: allCompletions.filter((completion) => visibleIds.has(completion.routineId)),
           preferences: savedPreferences
             ? { language: savedPreferences.language, theme: theme! }
             : { ...defaultPreferences },
@@ -106,6 +107,20 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
         };
         await database.routines.put(updated);
         return updated;
+      });
+    },
+
+    async finishRoutine(id: string): Promise<void> {
+      await database.prepare();
+      await database.transaction('rw', database.routines, async () => {
+        const routine = await database.routines.get(id);
+        if (!routine || routine.deletedAt) throw new RepositoryError('routine-not-found');
+        if (routine.finishedAt) return;
+        const date = now();
+        const timestamp = date.toISOString();
+        // Inclusive of today's existing check/undo. Never manufacture completion,
+        // truncate a schedule or rewrite a historical record when finishing.
+        await database.routines.put({ ...routine, finishedAt: timestamp, finishedDate: localDateKey(date), updatedAt: timestamp });
       });
     },
 
@@ -168,7 +183,7 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
       return database.transaction('rw', database.routines, database.completions, async () => {
         // Re-read data inside the transaction, so stale tabs cannot drop new routines
         // or overwrite completion/schedule changes made while a drag was in progress.
-        const routines = (await database.routines.toArray()).filter(r => !r.deletedAt).sort(compareManualOrder);
+        const routines = (await database.routines.toArray()).filter(isActiveRoutine).sort(compareManualOrder);
         if (!routines.some(r => r.id === activeId) || !routines.some(r => r.id === overId)) throw new RepositoryError('routine-not-found');
         const today = localDateKey(now());
         const records = await database.completions.where('date').equals(today).toArray();

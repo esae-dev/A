@@ -123,7 +123,10 @@ for (const theme of ['light', 'dark'] as const) {
       expect(new Set(colors).size).toBe(4)
     }
     await page.evaluate(() => window.scrollTo(0, 0))
-    expect((await page.locator('.streak-card').first().boundingBox())!.y).toBeLessThan(170)
+    const views = (await page.locator('.streak-view-control').boundingBox())!
+    const firstCard = (await page.locator('.streak-card').first().boundingBox())!
+    expect(firstCard.y - (views.y + views.height)).toBeGreaterThanOrEqual(12)
+    expect(firstCard.y - (views.y + views.height)).toBeLessThanOrEqual(20)
     await page.screenshot({ path: `test-results/navy-${theme}-streaks.png`, animations: 'disabled' })
     await page.reload()
     await expect(page.getByRole('button', { name: '독서 완료 취소', exact: true })).toBeVisible()

@@ -5,7 +5,7 @@ import { messages } from '../i18n'
 import { Icon } from './Icon'
 
 type Action = (routine: Routine, opener: HTMLElement) => void
-export function RoutineActions({ routine, language, disabled, onEdit, onDelete }: { routine: Routine; language: Language; disabled: boolean; onEdit: Action; onDelete: Action }) {
+export function RoutineActions({ routine, language, disabled, onEdit, onFinish, onDelete }: { routine: Routine; language: Language; disabled: boolean; onEdit: Action; onFinish: Action; onDelete: Action }) {
   const t = messages[language], id = useId()
   const trigger = useRef<HTMLButtonElement>(null), menu = useRef<HTMLDivElement>(null)
   const focused = useRef(false)
@@ -68,6 +68,7 @@ export function RoutineActions({ routine, language, disabled, onEdit, onDelete }
     {open && createPortal(<div className="routine-menu" ref={menu} id={id} role="menu" aria-label={`${routine.name} ${t.actions}`} style={{ top: position?.top ?? 0, left: position?.left ?? 0, visibility: position ? 'visible' : 'hidden' }} onKeyDown={navigate}
       onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget as Node) && !trigger.current?.contains(event.relatedTarget as Node)) close() }}>
       <button role="menuitem" tabIndex={-1} onClick={() => choose(onEdit)}>{t.edit}</button>
+      <button role="menuitem" tabIndex={-1} onClick={() => choose(onFinish)}>{t.finish}</button>
       <button role="menuitem" tabIndex={-1} className="menu-delete" onClick={() => choose(onDelete)}>{t.remove}</button>
     </div>, document.body)}
   </>
