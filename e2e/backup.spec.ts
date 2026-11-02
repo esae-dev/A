@@ -2,6 +2,7 @@ import { devices, expect, test, type Page } from '@playwright/test'
 import { readFile } from 'node:fs/promises'
 import type { HabitBackup } from '../src/data/backup'
 import { standalone } from './standalone'
+import { showDataManagement } from '../src/config'
 
 test.use({ ...devices['Pixel 5'], defaultBrowserType: 'chromium', timezoneId: 'Asia/Seoul' })
 const id = (n: number) => `c829117e-cd84-4fb4-831b-${String(n).padStart(12, '0')}`
@@ -32,8 +33,10 @@ async function open(page: Page) {
   await page.goto('./')
   await expect(page.getByRole('heading', { name: '루틴 없음', exact: true })).toBeVisible()
 }
-async function seed(page: Page) {
+async function seed(page: Page, theme: 'light' | 'dark' = 'dark', language: 'ko' | 'en' = 'ko') {
   await open(page)
+  const backup = fixture()
+  backup.data.preferences[0] = { id: 'app', theme, language }
   await page.evaluate(backup => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('eha-habit')
     request.onsuccess = () => {
@@ -42,7 +45,7 @@ async function seed(page: Page) {
       tx.oncomplete = () => { db.close(); resolve() }; tx.onerror = () => reject(tx.error)
     }
     request.onerror = () => reject(request.error)
-  }), fixture())
+  }), backup)
   await page.reload(); await expect(page.locator('.routine-card')).toHaveCount(2)
 }
 async function settings(page: Page, english = false) {
@@ -68,6 +71,28 @@ async function add(page: Page, name: string) {
   await page.getByRole('button', { name: '만들기', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
 }
+
+for (const [theme, language] of [['dark', 'ko'], ['light', 'en']] as const) test(`hidden data management keeps existing records and settings unchanged in ${theme}/${language}`, async ({ page }) => {
+  test.skip(showDataManagement, 'Applies to the AEHA 1.0 release with data management hidden')
+  await seed(page, theme, language)
+  const before = await raw(page)
+  await settings(page, language === 'en')
+  await expect(page.locator('.data-card, .restore-dialog, input[type="file"]')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: /^(백업하기|복원하기|Back up|Restore)$/ })).toHaveCount(0)
+  await expect(page.locator('.setting-row')).toHaveCount(2)
+  await expect(page.getByRole('combobox')).toHaveValue(language)
+  await expect(page.getByRole('group', { name: language === 'ko' ? '테마' : 'Theme', exact: true }).getByRole('button')).toHaveCount(2)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
+  expect(await raw(page)).toEqual(before)
+  await page.reload()
+  await expect(page.locator('.routine-card')).toHaveCount(2)
+  await settings(page, language === 'en')
+  await expect(page.locator('.data-card')).toHaveCount(0)
+  expect(await raw(page)).toEqual(before)
+})
+
+test.describe('backup and restore when the settings entry is available', () => {
+test.skip(!showDataManagement, 'JSON backup/restore UI is hidden for AEHA 1.0; internal unit tests remain active')
 
 test('mobile standalone download → different device → cancel/current backup/replace → restart → identical re-backup', async ({ page, browser }) => {
   await seed(page)
@@ -202,4 +227,5 @@ test('empty backup requires confirmation and restores empty tables; download fai
   await expect(page.getByRole('dialog')).toHaveCount(0)
   expect((await raw(page)).data).toEqual(empty.data)
   await page.reload(); await expect(page.getByRole('heading', { name: '루틴 없음', exact: true })).toBeVisible()
+})
 })

@@ -6,6 +6,9 @@ export const supportedLanguages = [
 
 export const themes = ['light', 'dark'] as const
 
+// AEHA 1.0 hides the settings entry while retaining backup/restore internals.
+export const showDataManagement = false
+
 /** Display order only; stored weekdays keep JavaScript's Sunday = 0 numbering. */
 export const weekdayDisplayOrder = [1, 2, 3, 4, 5, 6, 0] as const
 

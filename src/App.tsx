@@ -6,7 +6,7 @@ import { isActiveRoutine, isScheduled } from './domain/routines'
 import { compareManualOrder } from './domain/ordering'
 import { dailyProgress } from './domain/progress'
 import type { Completion, Language, Preferences, Routine, RoutineInput } from './domain/types'
-import { supportedLanguages, themes } from './config'
+import { showDataManagement, supportedLanguages, themes } from './config'
 import { messages } from './i18n'
 import { Icon } from './components/Icon'
 import { RoutineEditor } from './components/RoutineEditor'
@@ -261,7 +261,7 @@ export default function App() {
               </div>
             </section>
           </div>
-          <DataManagement language={language} busy={controlsBusy} onRestore={restoreBackup} />
+          {showDataManagement && <DataManagement language={language} busy={controlsBusy} onRestore={restoreBackup} />}
         </>}
       </main>
 
