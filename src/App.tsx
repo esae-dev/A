@@ -16,6 +16,8 @@ import { RoutineList } from './components/RoutineList'
 import { DeleteRoutineDialog } from './components/DeleteRoutineDialog'
 import { FinishRoutineDialog } from './components/FinishRoutineDialog'
 import { TodaySummary } from './components/TodaySummary'
+import { DataManagement } from './components/DataManagement'
+import type { HabitBackup } from './data/backup'
 import { applyTheme, finishLaunch, initialTheme } from './theme'
 
 type Page = 'home' | 'streak' | 'settings'
@@ -42,6 +44,7 @@ export default function App() {
   const controlsBusy = busy || unavailable
   const refreshInFlight = useRef<Promise<void> | null>(null)
   const mutationPending = useRef(false)
+  const restoring = useRef(false)
   const preferences = snapshot?.preferences ?? { language: 'ko', theme: bootTheme }
   const preferencesReady = snapshot !== null
   const language = preferences.language
@@ -50,6 +53,7 @@ export default function App() {
   useLayoutEffect(() => { finishLaunch(Boolean(error || notice)) }, [error, notice])
 
   const refresh = useCallback(() => {
+    if (restoring.current) return Promise.resolve()
     if (refreshInFlight.current) return refreshInFlight.current
     setLoading(true)
     setLoadDelayed(false)
@@ -149,6 +153,20 @@ export default function App() {
       : repository.createRoutine(input), true)
   }
 
+  async function restoreBackup(backup: HabitBackup) {
+    if (mutationPending.current) throw new Error('A write is already in progress')
+    mutationPending.current = true; restoring.current = true; setBusy(true)
+    try {
+      // Don't let an older focus/file-picker refresh overwrite the restored UI.
+      if (refreshInFlight.current) await refreshInFlight.current
+      const next = await repository.restoreBackup(backup)
+      setSnapshot(next); setToday(localDateKey()); setError(false); setCompletionEvent(0)
+      applyTheme(next.preferences.theme, true)
+    } finally {
+      restoring.current = false; mutationPending.current = false; setBusy(false)
+    }
+  }
+
   const allRoutines = snapshot?.routines ?? []
   const routines = useMemo(() => allRoutines.filter(isActiveRoutine), [allRoutines])
   const finishedRoutines = useMemo(() => allRoutines.filter(r => !r.deletedAt && r.finishedAt).sort((a, b) => b.finishedAt!.localeCompare(a.finishedAt!) || compareManualOrder(a, b)), [allRoutines])
@@ -243,6 +261,7 @@ export default function App() {
               </div>
             </section>
           </div>
+          <DataManagement language={language} busy={controlsBusy} onRestore={restoreBackup} />
         </>}
       </main>
 

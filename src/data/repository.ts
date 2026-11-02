@@ -4,6 +4,7 @@ import { isActiveRoutine, isScheduled, normalizeRoutineInput, updateSchedule } f
 import type { Completion, DateKey, Preferences, Routine, RoutineInput, Theme } from '../domain/types';
 import { supportedLanguages, themes } from '../config';
 import { compareLegacyOrder, compareManualOrder, completionIds, moveWithinHomeGroup } from '../domain/ordering';
+import { validateBackup, type HabitBackup } from './backup';
 
 export interface HabitSnapshot {
   routines: Routine[];
@@ -26,6 +27,11 @@ function currentDeviceTheme(): Theme {
 
 /** The UI depends on this API, never on Dexie tables or IndexedDB requests. */
 export function createRepository(database: HabitDatabase, now: () => Date = () => new Date(), deviceTheme: () => Theme = currentDeviceTheme) {
+  function visibleSnapshot(allRoutines: Routine[], allCompletions: Completion[], preferences: Preferences): HabitSnapshot {
+    const routines = allRoutines.filter(routine => !routine.deletedAt).sort(compareLegacyOrder);
+    const visibleIds = new Set(routines.map(routine => routine.id));
+    return { routines, completions: allCompletions.filter(completion => visibleIds.has(completion.routineId)), preferences };
+  }
   async function requireRoutine(id: string): Promise<Routine> {
     const routine = await database.routines.get(id);
     if (!routine || routine.deletedAt) throw new RepositoryError('routine-not-found');
@@ -36,6 +42,33 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
   return {
     getStorageStatus: database.getStorageStatus,
     subscribeStorageStatus: database.subscribeStorageStatus,
+    async exportBackup(): Promise<HabitBackup> {
+      await database.prepare();
+      return database.transaction('r', database.routines, database.completions, database.preferences, async () => {
+        const [routines, completions, preferences] = await Promise.all([
+          database.routines.toArray(), database.completions.toArray(), database.preferences.toArray(),
+        ]);
+        return { format: 'aeha-backup', formatVersion: 1, exportedAt: now().toISOString(), data: { routines, completions, preferences } };
+      });
+    },
+
+    async restoreBackup(input: unknown): Promise<HabitSnapshot> {
+      const backup = validateBackup(input);
+      await database.prepare();
+      return database.transaction('rw', database.routines, database.completions, database.preferences, async () => {
+        // Replace rows only inside this atomic transaction. Never delete/recreate
+        // the database, catch a failed bulk write, or commit a partial restore.
+        await Promise.all([database.routines.clear(), database.completions.clear(), database.preferences.clear()]);
+        await database.routines.bulkAdd(backup.data.routines);
+        await database.completions.bulkAdd(backup.data.completions);
+        await database.preferences.bulkAdd(backup.data.preferences);
+        const saved = backup.data.preferences[0];
+        return visibleSnapshot(backup.data.routines, backup.data.completions, saved
+          ? { language: saved.language, theme: saved.theme === 'system' ? deviceTheme() : saved.theme }
+          : { ...defaultPreferences });
+      });
+    },
+
     async getSnapshot(): Promise<HabitSnapshot> {
       await database.prepare();
       return database.transaction('rw', database.routines, database.completions, database.preferences, async () => {
@@ -44,22 +77,14 @@ export function createRepository(database: HabitDatabase, now: () => Date = () =
           database.completions.toArray(),
           database.preferences.get('app'),
         ]);
-        const routines = allRoutines
-          .filter((routine) => !routine.deletedAt)
-          .sort(compareLegacyOrder);
-        const visibleIds = new Set(routines.map((routine) => routine.id));
         const theme = savedPreferences?.theme === 'system' ? deviceTheme() : savedPreferences?.theme;
         if (savedPreferences?.theme === 'system') {
           // Keep the language and any future fields; never touch routine/history data.
           await database.preferences.put({ ...savedPreferences, theme: theme! });
         }
-        return {
-          routines,
-          completions: allCompletions.filter((completion) => visibleIds.has(completion.routineId)),
-          preferences: savedPreferences
+        return visibleSnapshot(allRoutines, allCompletions, savedPreferences
             ? { language: savedPreferences.language, theme: theme! }
-            : { ...defaultPreferences },
-        };
+            : { ...defaultPreferences });
       });
     },
 
