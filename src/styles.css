@@ -19,10 +19,9 @@
   --on-primary: #fff;
   --danger: #b94444;
   --missed: #cdd4dd;
-  --off: #e0e3e6;
+  --off: #edf0f2;
   --future: #f7f7f6;
   --future-border: #d5dae0;
-  --off-pattern: #52657d0a;
   --nav-bg: #fff;
   --control-border: #b8c1cc;
   --completion-accent: #405c86;
@@ -48,10 +47,9 @@ html[data-theme="dark"] {
   --on-primary: #131b2b;
   --danger: #f09494;
   --missed: #526176;
-  --off: #2c3747;
+  --off: #263142;
   --future: #1b2534;
   --future-border: #627189;
-  --off-pattern: #9aacc00c;
   --nav-bg: #161f2d;
   --control-border: #8795a9;
   --completion-accent: #879fcb;
@@ -208,9 +206,11 @@ html[data-theme="dark"] .fab { color: #131b2b; }
 .heatmap-week { display: flex; flex-direction: column; gap: var(--heatmap-gap); scroll-snap-align: start; }
 .heatmap-cell { display: block; width: var(--heatmap-cell, 13px); height: var(--heatmap-cell, 13px); flex-shrink: 0; border-radius: 2px; border: 1px solid transparent; }
 .heatmap-cell.completed { background: var(--routine-color); }
-.heatmap-cell.missed { background: transparent; }
-.heatmap-cell.off { background: var(--off); background-image: repeating-linear-gradient(135deg, transparent 0 3px, var(--off-pattern) 3px 4px); }
+.heatmap-cell.missed, .heatmap-cell.before-creation { background: transparent; }
+/* Keep small scrolling cells flat; repeating patterns can alias on mobile. */
+.heatmap-cell.off { background: var(--off); }
 .heatmap-cell.future { background: var(--future); border: 1px dashed var(--future-border); }
+.heatmap-cell.after-finish { background: var(--future); border-color: var(--border); }
 .heatmap-cell.is-today, .heatmap-cell.is-finish-date { outline: 1px solid var(--muted); outline-offset: 1px; }
 .heatmap-legend { display: flex; flex-wrap: wrap; gap: 9px 14px; margin-top: 14px; color: var(--muted); font-size: 11px; line-height: 1.5; }
 .heatmap-legend > span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }

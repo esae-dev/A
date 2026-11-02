@@ -85,14 +85,15 @@ async function expectEmptyMissedCells(page: Page, finished: boolean) {
   await expect(card.locator('.heatmap-grid [role="img"]')).toHaveCount(182)
   const grid = await card.locator('.heatmap-grid .heatmap-cell').evaluateAll(items => items.map(el => {
     const style = getComputedStyle(el), box = el.getBoundingClientRect()
-    return { state: ['completed', 'missed', 'off', 'future'].find(state => el.classList.contains(state)), color: style.backgroundColor, pattern: style.backgroundImage, border: style.borderTopStyle, width: box.width, height: box.height }
+    return { state: ['completed', 'missed', 'off', 'future', 'before-creation', 'after-finish'].find(state => el.classList.contains(state)), color: style.backgroundColor, pattern: style.backgroundImage, border: style.borderTopStyle, width: box.width, height: box.height }
   }))
   expect(grid.filter(cell => cell.state === 'missed')).toHaveLength(2)
   expect(grid.filter(cell => cell.state === 'missed').every(cell => cell.color === 'rgba(0, 0, 0, 0)')).toBe(true)
   expect(grid.filter(cell => cell.state === 'completed')).toHaveLength(6)
   expect(grid.filter(cell => cell.state === 'completed').every(cell => cell.color === 'rgb(139, 99, 199)')).toBe(true)
-  expect(grid.filter(cell => cell.state === 'off').some(cell => cell.pattern !== 'none' && cell.color !== 'rgba(0, 0, 0, 0)')).toBe(true)
-  expect(grid.filter(cell => cell.state === 'future').some(cell => cell.border === 'dashed' && cell.color !== 'rgba(0, 0, 0, 0)')).toBe(true)
+  expect(grid.filter(cell => cell.state === 'before-creation').every(cell => cell.pattern === 'none' && cell.color === 'rgba(0, 0, 0, 0)')).toBe(true)
+  expect(grid.every(cell => cell.pattern === 'none')).toBe(true)
+  expect(grid.filter(cell => cell.state === (finished ? 'after-finish' : 'future')).some(cell => cell.border === (finished ? 'solid' : 'dashed') && cell.color !== 'rgba(0, 0, 0, 0)')).toBe(true)
   expect(grid.every(cell => cell.width > 0 && cell.width === grid[0].width && cell.height === grid[0].height)).toBe(true)
   const missed = card.locator('.heatmap-legend .missed')
   await expect(missed).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')

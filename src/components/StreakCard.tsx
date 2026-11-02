@@ -6,8 +6,8 @@ import { recordReferenceDate } from '../domain/routines';
 import { Icon } from './Icon';
 
 const copy = {
-  ko: { current: '현재 연속', longest: '최장 연속', count: '회', completed: '완료', missed: '미완료', off: '비대상일', future: '예정', history: '최근 26주 기록', weekdays: ['일', '월', '화', '수', '목', '금', '토'], finished: '완료 기록', started: '시작일', finishDate: '마무리일', total: '총 완료 일수', days: '일', finishedHistory: '마무리일 기준 26주 기록', afterFinish: '마무리 이후', remove: '완료 기록 삭제' },
-  en: { current: 'Current streak', longest: 'Best streak', count: '', completed: 'Done', missed: 'Not done', off: 'Not scheduled', future: 'Upcoming', history: 'Last 26 weeks', weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], finished: 'Completed record', started: 'Started', finishDate: 'Finished', total: 'Completed days', days: 'days', finishedHistory: '26 weeks ending on finish date', afterFinish: 'After finish', remove: 'Delete completed record' },
+  ko: { current: '현재 연속', longest: '최장 연속', count: '회', completed: '완료', missed: '미완료', off: '비대상일', future: '예정', 'before-creation': '시작 이전', 'after-finish': '마무리 이후', history: '최근 26주 기록', weekdays: ['일', '월', '화', '수', '목', '금', '토'], finished: '완료 기록', started: '시작일', finishDate: '마무리일', total: '총 완료 일수', days: '일', finishedHistory: '마무리일 기준 26주 기록', remove: '완료 기록 삭제' },
+  en: { current: 'Current streak', longest: 'Best streak', count: '', completed: 'Done', missed: 'Not done', off: 'Not scheduled', future: 'Upcoming', 'before-creation': 'Before start', 'after-finish': 'After finish', history: 'Last 26 weeks', weekdays: ['S', 'M', 'T', 'W', 'T', 'F', 'S'], finished: 'Completed record', started: 'Started', finishDate: 'Finished', total: 'Completed days', days: 'days', finishedHistory: '26 weeks ending on finish date', remove: 'Delete completed record' },
 };
 
 export function StreakCard({ routine, completions, today, language, busy = false, onDelete }: { routine: Routine; completions: Completion[]; today: string; language: 'ko' | 'en'; busy?: boolean; onDelete?: (routine: Routine, opener: HTMLElement) => void }) {
@@ -84,13 +84,13 @@ export function StreakCard({ routine, completions, today, language, busy = false
         })}</div>
         <div className="heatmap-grid">{weeks.map(week => <div className="heatmap-week" key={week[0]}>{week.map(date => {
           const state = getCellState(routine, records, date, through);
-          const label = `${dateFormat.format(dateObject(date))}: ${state === 'future' && finished ? t.afterFinish : t[state]}`;
-          return <span key={date} className={`heatmap-cell ${state}${date === through ? finished ? ' is-finish-date' : ' is-today' : ''}`} title={label} role="img" aria-label={label} />;
+          const label = `${dateFormat.format(dateObject(date))}: ${t[state]}`;
+          return <span key={date} data-date={date} className={`heatmap-cell ${state}${date === through ? finished ? ' is-finish-date' : ' is-today' : ''}`} title={label} role="img" aria-label={label} />;
         })}</div>)}</div>
         </div>
       </div>
       </div>
     </div>
-    <div className="heatmap-legend">{(['completed', 'missed', 'off', 'future'] as const).map(state => <span key={state}><i className={`heatmap-cell ${state}`} aria-hidden="true" />{state === 'future' && finished ? t.afterFinish : t[state]}</span>)}</div>
+    <div className="heatmap-legend">{(['completed', 'missed', 'off', finished ? 'after-finish' : 'future'] as const).map(state => <span key={state}><i className={`heatmap-cell ${state}`} aria-hidden="true" />{t[state]}</span>)}</div>
   </article>;
 }

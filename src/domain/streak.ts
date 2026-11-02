@@ -1,5 +1,5 @@
 import { addDays, isDateKey } from './dates';
-import { isScheduled } from './routines';
+import { isScheduled, recordReferenceDate } from './routines';
 import type { Completion, DateKey, Routine } from './types';
 
 export interface Streak {
@@ -8,7 +8,7 @@ export interface Streak {
   total: number;
 }
 
-export type CellState = 'completed' | 'missed' | 'off' | 'future';
+export type CellState = 'completed' | 'missed' | 'off' | 'future' | 'before-creation' | 'after-finish';
 
 /** Resolve defensively by update timestamp; cancellation is an explicit state. */
 function completionDays(routineId: string, completions: Completion[]): Set<DateKey> {
@@ -41,6 +41,9 @@ export function calculateStreak(routine: Routine, completions: Completion[], tod
 }
 
 export function getCellState(routine: Routine, completions: Completion[], date: DateKey, today: DateKey): CellState {
+  // These are viewport states only; historical scheduling and streaks stay intact.
+  if (date < routine.createdDate) return 'before-creation';
+  if (routine.finishedAt && date > recordReferenceDate(routine, today)) return 'after-finish';
   if (date > today) return 'future';
   if (!isScheduled(routine, date)) return 'off';
   return completionDays(routine.id, completions).has(date) ? 'completed' : 'missed';

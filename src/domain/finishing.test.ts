@@ -33,6 +33,6 @@ describe('routine lifecycle and frozen history', () => {
     expect(calculateStreak(finished, records, through)).toEqual({ current: 3, longest: 3, total: 3 });
     expect(getCellState(finished, records, '2026-10-24', through)).toBe('off');
     expect(getCellState(finished, records, today, through)).toBe('missed');
-    expect(getCellState(finished, records, '2026-10-28', through)).toBe('future');
+    expect(getCellState(finished, records, '2026-10-28', through)).toBe('after-finish');
   });
 });

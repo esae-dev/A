@@ -101,8 +101,24 @@ describe('contribution cell states', () => {
     expect(getCellState(habit, completions, '2026-10-24', '2026-10-23')).toBe('future');
   });
 
-  it('makes pre-creation dates unavailable and cancellation visible', () => {
-    expect(getCellState(habit, completions, '2026-10-16', '2026-10-23')).toBe('off');
+  it('leaves pre-creation dates empty, even with stray records, without hiding cancellation', () => {
+    expect(getCellState(habit, records('2026-10-16'), '2026-10-16', '2026-10-23')).toBe('before-creation');
+    expect(getCellState(habit, completions, '2026-10-18', '2026-10-17')).toBe('before-creation');
     expect(getCellState(habit, [completion('2026-10-19', false)], '2026-10-19', '2026-10-23')).toBe('missed');
+  });
+
+  it('distinguishes creation, off days and post-finish cells without counting post-finish records', () => {
+    const archived = { ...habit, finishedAt: '2026-10-23T12:00:00Z', finishedDate: '2026-10-23' };
+    const records = [completion('2026-10-19'), completion('2026-10-23'), completion('2026-10-26')];
+    const before = structuredClone({ archived, records });
+    expect(getCellState(archived, records, '2026-10-18', '2027-01-01')).toBe('before-creation');
+    expect(getCellState(archived, records, '2026-10-19', '2027-01-01')).toBe('completed');
+    expect(getCellState(archived, records, '2026-10-20', '2027-01-01')).toBe('off');
+    expect(getCellState(archived, records, '2026-10-21', '2027-01-01')).toBe('missed');
+    expect(getCellState(archived, records, '2026-10-23', '2027-01-01')).toBe('completed');
+    expect(getCellState(archived, records, '2026-10-24', '2026-10-23')).toBe('after-finish');
+    expect(getCellState(archived, records, '2026-10-26', '2027-01-01')).toBe('after-finish');
+    expect(calculateStreak(archived, records, archived.finishedDate)).toEqual({ current: 1, longest: 1, total: 2 });
+    expect({ archived, records }).toEqual(before);
   });
 });
