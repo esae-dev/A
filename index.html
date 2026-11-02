@@ -27,7 +27,7 @@
         if ((matchMedia('(display-mode: standalone)').matches || navigator.standalone === true) && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
           document.documentElement.dataset.launch = 'pending';
           const logo = document.createElement('link');
-          logo.rel = 'preload'; logo.as = 'image'; logo.href = `%BASE_URL%brand/logo-${theme}.svg`;
+          logo.rel = 'preload'; logo.as = 'image'; logo.href = `%BASE_URL%brand/logo-${theme}-raster-v1.png`;
           document.head.append(logo);
         }
       })();
@@ -43,8 +43,8 @@
   </head>
   <body>
     <div id="launch-brand" aria-hidden="true">
-      <img class="launch-light" src="%BASE_URL%brand/logo-light.svg" alt="" />
-      <img class="launch-dark" src="%BASE_URL%brand/logo-dark.svg" alt="" />
+      <img class="launch-light" src="%BASE_URL%brand/logo-light-raster-v1.png" alt="" />
+      <img class="launch-dark" src="%BASE_URL%brand/logo-dark-raster-v1.png" alt="" />
     </div>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

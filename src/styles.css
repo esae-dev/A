@@ -206,9 +206,9 @@ html[data-theme="dark"] .fab { color: #131b2b; }
 .heatmap-week { display: flex; flex-direction: column; gap: var(--heatmap-gap); scroll-snap-align: start; }
 .heatmap-cell { display: block; width: var(--heatmap-cell, 13px); height: var(--heatmap-cell, 13px); flex-shrink: 0; border-radius: 2px; border: 1px solid transparent; }
 .heatmap-cell.completed { background: var(--routine-color); }
-.heatmap-cell.missed, .heatmap-cell.before-creation { background: transparent; }
+.heatmap-cell.missed { background: transparent; }
 /* Keep small scrolling cells flat; repeating patterns can alias on mobile. */
-.heatmap-cell.off { background: var(--off); }
+.heatmap-cell.off, .heatmap-cell.before-creation { background: var(--off); }
 .heatmap-cell.future { background: var(--future); border: 1px dashed var(--future-border); }
 .heatmap-cell.after-finish { background: var(--future); border-color: var(--border); }
 .heatmap-cell.is-today, .heatmap-cell.is-finish-date { outline: 1px solid var(--muted); outline-offset: 1px; }

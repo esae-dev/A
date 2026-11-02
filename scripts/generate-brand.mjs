@@ -20,6 +20,16 @@ const browser = await chromium.launch({
 })
 try {
   const page = await browser.newPage({ deviceScaleFactor: 1 })
+  // Bake the unchanged SVG gradients/transforms once, instead of relying on
+  // each mobile SVG compositor. 3x the 510x180 source also covers the launch
+  // logo at more than 6x its CSS size. Preserve the transparent background.
+  for (const theme of ['light', 'dark']) {
+    const source = await readFile(`${publicDir}/brand/logo-${theme}.svg`)
+    await page.setViewportSize({ width: 1530, height: 540 })
+    await page.setContent(`<style>html,body{margin:0;background:transparent}img{display:block;width:1530px;height:540px}</style><img src="data:image/svg+xml;base64,${source.toString('base64')}">`)
+    await page.locator('img').evaluate(image => image.decode())
+    await page.screenshot({ path: `${publicDir}/brand/logo-${theme}-raster-v1.png`, omitBackground: true })
+  }
   // Render the SVG source, without an image-generation step or a remote font.
   for (const [file, size] of [['icon-192.png', 192], ['icon-512.png', 512], ['icon-maskable-512.png', 512], ['apple-touch-icon.png', 180], ['apple-touch-icon-v2.png', 180], ['favicon-32.png', 32]]) {
     await page.setViewportSize({ width: size, height: size })
@@ -35,4 +45,4 @@ try {
 } finally {
   await browser.close()
 }
-console.log('AEHA: theme/monochrome SVG lockups and symbols, favicon, 192/512/maskable/Apple PNGs generated.')
+console.log('AEHA: SVG sources, transparent 1530x540 logo PNGs, favicon, 192/512/maskable/Apple PNGs generated.')

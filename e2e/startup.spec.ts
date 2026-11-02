@@ -15,7 +15,7 @@ test('standalone preboot uses the existing logo and cached dark surface, then ex
   await expect(page.locator('#launch-brand .launch-dark')).toHaveCSS('opacity', '1')
   await expect(page.locator('#launch-brand')).toHaveCSS('background-color', 'rgb(18, 26, 39)')
   await expect(page.locator('#launch-brand')).toHaveCSS('pointer-events', 'none')
-  await expect(page.locator('#launch-brand .launch-dark')).toHaveAttribute('src', '/A/brand/logo-dark.svg')
+  await expect(page.locator('#launch-brand .launch-dark')).toHaveAttribute('src', '/A/brand/logo-dark-raster-v1.png')
   await expect.poll(() => page.locator('#launch-brand .launch-dark').evaluate((image: HTMLImageElement) => image.naturalWidth)).toBeGreaterThan(0)
   await page.screenshot({ path: 'test-results/aeha-standalone-dark-start.png' })
   // Deliberately extend only the test animation. App readiness must not await it.

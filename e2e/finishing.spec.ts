@@ -91,7 +91,7 @@ async function expectEmptyMissedCells(page: Page, finished: boolean) {
   expect(grid.filter(cell => cell.state === 'missed').every(cell => cell.color === 'rgba(0, 0, 0, 0)')).toBe(true)
   expect(grid.filter(cell => cell.state === 'completed')).toHaveLength(6)
   expect(grid.filter(cell => cell.state === 'completed').every(cell => cell.color === 'rgb(139, 99, 199)')).toBe(true)
-  expect(grid.filter(cell => cell.state === 'before-creation').every(cell => cell.pattern === 'none' && cell.color === 'rgba(0, 0, 0, 0)')).toBe(true)
+  expect(grid.filter(cell => cell.state === 'before-creation').every(cell => cell.pattern === 'none' && cell.color !== 'rgba(0, 0, 0, 0)')).toBe(true)
   expect(grid.every(cell => cell.pattern === 'none')).toBe(true)
   expect(grid.filter(cell => cell.state === (finished ? 'after-finish' : 'future')).some(cell => cell.border === (finished ? 'solid' : 'dashed') && cell.color !== 'rgba(0, 0, 0, 0)')).toBe(true)
   expect(grid.every(cell => cell.width > 0 && cell.width === grid[0].width && cell.height === grid[0].height)).toBe(true)

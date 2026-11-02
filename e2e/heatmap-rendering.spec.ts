@@ -162,7 +162,7 @@ for (const [theme, language] of [['dark', 'ko'], ['light', 'en']] as const) test
   await expect(recent.locator('.heatmap-grid .missed')).toHaveCount(2)
   await expect(recent.locator('.heatmap-grid .completed')).toHaveCount(2)
   await expect(recent.locator('.heatmap-grid .future')).toHaveCount(5)
-  await expect(recent.locator('[data-date="2026-10-29"]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+  await expect(recent.locator('[data-date="2026-10-29"]')).toHaveCSS('background-color', theme === 'dark' ? 'rgb(38, 49, 66)' : 'rgb(237, 240, 242)')
   await expect(recent.locator('[data-date="2026-10-31"]')).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
   await expect(recent.locator('[data-date="2026-10-30"]')).toHaveCSS('background-color', 'rgb(107, 148, 232)')
   await expect(old.locator('[data-date="2026-11-01"]')).toHaveClass('heatmap-cell off')

@@ -176,7 +176,7 @@ test('project subpath manifest, icons, service worker and offline read/write', a
     expect(png.readUInt32BE(16)).toBe(size)
     expect(png.readUInt32BE(20)).toBe(size)
   }
-  for (const path of ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'apple-touch-icon-v2.png', 'brand/logo-light.svg', 'brand/logo-dark.svg', 'brand/symbol-light.svg', 'brand/symbol-dark.svg']) {
+  for (const path of ['favicon.svg', 'favicon-32.png', 'apple-touch-icon.png', 'apple-touch-icon-v2.png', 'brand/logo-light.svg', 'brand/logo-dark.svg', 'brand/logo-light-raster-v1.png', 'brand/logo-dark-raster-v1.png', 'brand/symbol-light.svg', 'brand/symbol-dark.svg']) {
     expect((await page.request.get(`/A/${path}`)).status()).toBe(200)
   }
   const scope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope)
@@ -187,9 +187,11 @@ test('project subpath manifest, icons, service worker and offline read/write', a
   await page.reload()
   await expect(page.getByRole('heading', { name: '오프라인 독서' })).toBeVisible()
   await expect.poll(() => page.locator('.brand-logo-light').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+  await expect(page.locator('.brand-logo-light')).toHaveAttribute('src', '/A/brand/logo-light-raster-v1.png')
   await page.getByRole('button', { name: '설정', exact: true }).click()
   await page.getByRole('button', { name: '다크', exact: true }).click()
   await expect.poll(() => page.locator('.brand-logo-dark').evaluate((image: HTMLImageElement) => image.complete && image.naturalWidth > 0)).toBe(true)
+  await expect(page.locator('.brand-logo-dark')).toHaveAttribute('src', '/A/brand/logo-dark-raster-v1.png')
   await page.getByRole('button', { name: '홈', exact: true }).click()
   await page.getByRole('button', { name: '오프라인 독서 완료하기' }).click()
   await expect(page.getByRole('button', { name: '오프라인 독서 완료 취소' })).toBeVisible()
