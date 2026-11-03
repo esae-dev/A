@@ -7,3 +7,10 @@ test-results/
 .env
 .env.*
 !.env.example
+
+# Android private signing material must stay outside version control.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.key

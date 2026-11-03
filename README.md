@@ -240,3 +240,7 @@ e2e/                    Playwright 브라우저 테스트
 ```
 
 화면은 저장소 API를 사용하고 IndexedDB에 직접 접근하지 않습니다. UUID, 수정 시각, 삭제/완료 취소 상태와 버전 관리 스키마는 데이터 확장을 위한 기반이며 현재 서버나 동기화 엔진은 없습니다.
+
+## Android / Google Play 패키징
+
+기존 `/A/` PWA를 여는 Bubblewrap TWA 프로젝트는 [`android/`](android/README.md)에 별도로 관리합니다. 생성·미서명 APK/AAB 빌드, 사용자 PC에서의 업로드 키 서명, 도메인 루트 Digital Asset Links와 Play Console 내부 테스트 절차는 해당 문서를 참고하세요. 실제 빌드/인증 상태는 [`android/BUILD-REPORT.md`](android/BUILD-REPORT.md)에 기록합니다. 키 생성과 실제 서명은 소유자가 수행하며, 이 프로젝트 추가는 웹 UI·IndexedDB·PWA 설치 정보를 변경하지 않습니다.

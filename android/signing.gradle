@@ -1,0 +1,28 @@
+// Opt-in only. Neither unsigned nor debug builds generate a release key.
+// Supply these environment variables on the owner's PC, never in this file.
+if (providers.gradleProperty('aehaSignRelease').orNull == 'true') {
+    def required = ['AEHA_UPLOAD_KEYSTORE', 'AEHA_UPLOAD_ALIAS',
+                    'AEHA_UPLOAD_STORE_PASSWORD', 'AEHA_UPLOAD_KEY_PASSWORD']
+    def values = required.collectEntries { name -> [(name): System.getenv(name)] }
+    if (values.any { name, value -> !value }) {
+        throw new GradleException('Missing local signing environment variables. See android/README.md.')
+    }
+    def keyFile = new File(values.AEHA_UPLOAD_KEYSTORE)
+    if (!keyFile.isAbsolute() || !keyFile.isFile()) {
+        throw new GradleException('AEHA_UPLOAD_KEYSTORE must be an existing absolute path outside the repository.')
+    }
+    if (keyFile.canonicalPath.startsWith(rootProject.projectDir.parentFile.parentFile.canonicalPath + File.separator)) {
+        throw new GradleException('Keep the upload keystore outside the repository.')
+    }
+    android {
+        signingConfigs {
+            upload {
+                storeFile keyFile
+                keyAlias values.AEHA_UPLOAD_ALIAS
+                storePassword values.AEHA_UPLOAD_STORE_PASSWORD
+                keyPassword values.AEHA_UPLOAD_KEY_PASSWORD
+            }
+        }
+        buildTypes.release.signingConfig = signingConfigs.upload
+    }
+}

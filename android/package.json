@@ -1,0 +1,18 @@
+{
+  "name": "aeha-android-packaging",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Separate Bubblewrap tooling for AEHA's Trusted Web Activity",
+  "scripts": {
+    "bubblewrap": "bubblewrap",
+    "generate": "node scripts/generate.mjs",
+    "build:unsigned": "node scripts/build.mjs",
+    "build:signed": "node scripts/build.mjs --signed",
+    "assetlinks": "node scripts/assetlinks.mjs",
+    "test": "node test/packaging.test.mjs"
+  },
+  "devDependencies": {
+    "@bubblewrap/cli": "1.27.0",
+    "@bubblewrap/core": "1.27.0"
+  }
+}

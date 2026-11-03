@@ -1,0 +1,12 @@
+node_modules/
+project/.gradle/
+project/local.properties
+project/**/build/
+artifacts/
+*.local.json
+*.local.properties
+signing.properties
+key.properties
+keystore.properties
+*.apk
+*.aab
